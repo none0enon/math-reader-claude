@@ -1,0 +1,15 @@
+{
+  // Math Reader 的 MCP 连接器。部署后在 claude.ai 添加自定义连接器，地址为 https://<worker 域名>/mcp。
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "math-reader-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-01",
+  // global_fetch_strictly_public：OAuth 库抓取客户端元数据文档（CIMD）时需要
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  // OAuth 令牌存储。不写 id：首次部署时 wrangler 自动创建，之后的部署沿用已绑定的命名空间。
+  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  // math-reader 同步用的 R2 存储桶。GitHub Actions 部署时用仓库 Secret R2_BUCKET_NAME 替换占位符。
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "R2_BUCKET_NAME_PLACEHOLDER" }],
+  "observability": { "enabled": true }
+}

@@ -13,6 +13,7 @@ This repository ships the current Math Reader web app as an Android APK. BOOX/E 
 | 课堂 | 按课程/讲座整理课堂，录音、拍照或上传资料，并生成带来源引用的 AI 笔记 |
 | 书架与阅读 | 管理书籍/论文，阅读和批注 PDF，搜索/OCR、套索问 AI、按文档保存对话 |
 | 讲义 | 为 PDF 书籍生成大纲和分章节讲义，为论文生成摘要 |
+| Claude 连接器 | 让 claude.ai 读取书目、大纲和书页，在对话中写讲义，图由 Claude 内置可视化绘制（见 [mcp/README.md](mcp/README.md)） |
 | 笔记 | 模板化手写笔记本、PDF/图片/音频插入、搜索、PDF 导出 |
 | 复习 | 从指定笔记页生成 Quiz，按间隔复习计划自动推进并由 AI 评分 |
 | 习题 | 从图片/PDF 识别题目，手写作答、计时、AI 批改、重做与归档 |
@@ -62,7 +63,7 @@ API Key 和 AI 功能分配保存在本机设置中，不会随 R2 元数据同�
 
 1. 打开 **书架**，点击“书籍”或“论文”栏的空白处。
 2. 选择 PDF、ePub、TeX 或 LaTeX 文件，可选填标题和摘要后点击 **添加**。
-3. 点击卡片打开资料；长按卡片可 **存档** 或 **删除**，存档内容可在右上角 **存档** 中恢复。
+3. 点击卡片打开资料；长按卡片可 **同步书页给 Claude**、**存档** 或 **删除**，存档内容可在右上角 **存档** 中恢复。“同步书页给 Claude”把 PDF 逐页渲染成图片上传到 R2，供 Claude 连接器读取，需要先配置 R2 云同步（见 [mcp/README.md](mcp/README.md)）。
 4. 当前阅读器仅对 **PDF** 提供完整在线渲染、页码、搜索、批注和 AI 页面上下文。ePub/TeX/LaTeX 可以导入和保存，但当前界面会提示暂不支持在线渲染。
 
 书架左上角 **AI** 提供四个入口：
@@ -251,7 +252,7 @@ API credentials and AI feature assignments stay local and are excluded from R2 m
 
 1. Open **Library** and tap an empty area in the Books or Papers column.
 2. Select a PDF, ePub, TeX, or LaTeX file. Optionally edit its title and abstract, then tap **Add**.
-3. Tap a card to open it. Long-press a card to archive or delete it; restore archived items from **Archive**.
+3. Tap a card to open it. Long-press a card to send its pages to Claude, archive it, or delete it; restore archived items from **Archive**. **Send pages to Claude** renders the PDF page by page and uploads the images to R2 for the Claude connector; it requires R2 sync (see [mcp/README.md](mcp/README.md)).
 4. The current full reader supports **PDF only**. ePub/TeX/LaTeX files can be stored in the library, but the app currently reports that inline rendering is unavailable.
 
 The Library **AI** menu provides:
@@ -383,6 +384,8 @@ For unresolved problems, open an [Issue](https://github.com/none0enon/math-reade
 GitHub Actions 在同仓库 PR 和 `main` 更新后自动构建。默认分支的 `Sign APK` workflow 下载构建产物、核对包名和版本，并使用长期 CI 密钥签名。可在 **Actions → Sign APK → Artifacts** 获取 `math-reader-boox-1.0.2-ci.*`。
 
 `versionCode` 随 `Build APK` workflow run 自动递增，版本号基数保存在仓库变量 `APK_VERSION_CODE_BASE`。不要降低该变量；重建 workflow 导致 run number 重新计数时，应先提高基数。
+
+本仓库（math-reader-claude）复制自 math-reader-boox，run number 从 1 重新计数。未设置 `APK_VERSION_CODE_BASE` 时工作流使用默认基数 150400，构建出的 versionCode 高于 math-reader-boox 的 1.0.2-ci.304.1（150401）；未设置 `APK_SIGNING_CERT_SHA256` 时使用 math-reader-boox 的签名证书指纹 `3CD2D6EAB2C5E17B1B947A929C274B1BE40C3C13FA9E58F8F5A64D26FEA2DB94`。签名还需要在本仓库添加与 math-reader-boox 相同的 Secrets `APK_SIGNING_KEYSTORE_BASE64` 和 `APK_SIGNING_PASSWORD`，这样新 APK 可以直接覆盖安装原应用。
 
 本地构建需要 Android SDK，并能访问 `repo.boox.com`：
 

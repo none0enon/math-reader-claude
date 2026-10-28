@@ -42,7 +42,8 @@ jobs:
         id: version
         shell: bash
         env:
-          VERSION_CODE_BASE: ${{ vars.APK_VERSION_CODE_BASE }}
+          # 与 Build APK 的默认基数一致（见 build-apk.yml）
+          VERSION_CODE_BASE: ${{ vars.APK_VERSION_CODE_BASE || '150400' }}
           BUILD_RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
           BUILD_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
         run: |
@@ -96,7 +97,8 @@ jobs:
         env:
           APK_SIGNING_KEYSTORE_BASE64: ${{ secrets.APK_SIGNING_KEYSTORE_BASE64 }}
           APK_SIGNING_PASSWORD: ${{ secrets.APK_SIGNING_PASSWORD }}
-          EXPECTED_CERT_SHA256: ${{ vars.APK_SIGNING_CERT_SHA256 }}
+          # 未设置仓库变量时使用 math-reader-boox 签名证书的指纹，保证能覆盖安装原应用
+          EXPECTED_CERT_SHA256: ${{ vars.APK_SIGNING_CERT_SHA256 || '3CD2D6EAB2C5E17B1B947A929C274B1BE40C3C13FA9E58F8F5A64D26FEA2DB94' }}
           EXPECTED_VERSION_CODE: ${{ steps.version.outputs.code }}
           EXPECTED_VERSION_NAME: ${{ steps.version.outputs.name }}
           AAPT2: ${{ steps.android_tools.outputs.aapt2 }}
@@ -222,7 +224,7 @@ jobs:
         env:
           VERSION_CODE: ${{ steps.version.outputs.code }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
-          CERT_SHA256: ${{ vars.APK_SIGNING_CERT_SHA256 }}
+          CERT_SHA256: ${{ vars.APK_SIGNING_CERT_SHA256 || '3CD2D6EAB2C5E17B1B947A929C274B1BE40C3C13FA9E58F8F5A64D26FEA2DB94' }}
           SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           {

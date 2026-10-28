@@ -6801,6 +6801,12 @@
                 prompt_lecture_pages:'对应页码：第 {0} - {1} 页',
                 prompt_lecture_topics:'涉及主题：',
                 prompt_lecture_gen:'请根据附件 PDF 内容生成这一节完整讲义。',
+                claude_sync_pages:'同步书页给 Claude',
+                claude_pages_need_r2:'请先在设置中配置 R2 云同步：Claude 连接器从 R2 读取书页。',
+                claude_pages_running:'正在同步书页，请等当前任务完成。',
+                claude_pages_progress:'同步书页给 Claude：{0}/{1}',
+                claude_pages_done:'已同步给 Claude：共 {0} 页',
+                claude_pages_failed:'同步书页失败：',
                 prompt_abstract_sys:'你是一个学术论文分析专家。请根据提供的论文信息，生成一份结构化的摘要，包括：\n1. 研究背景和目的\n2. 研究方法\n3. 主要发现和结论\n4. 研究意义和贡献\n\n请使用学术性的语言，简洁清晰。',
                 prompt_abstract_user:'请为以下论文生成摘要：\n标题：',
                 prompt_abstract_author:'作者：',
@@ -6991,6 +6997,12 @@
                 prompt_lecture_pages:'Pages: {0} - {1}',
                 prompt_lecture_topics:'Topics: ',
                 prompt_lecture_gen:'Generate complete lecture notes based on the attached PDF.',
+                claude_sync_pages:'Send pages to Claude',
+                claude_pages_need_r2:'Configure R2 sync in Settings first: the Claude connector reads pages from R2.',
+                claude_pages_running:'Pages are already being sent. Wait for the current job to finish.',
+                claude_pages_progress:'Sending pages to Claude: {0}/{1}',
+                claude_pages_done:'Sent to Claude: {0} pages',
+                claude_pages_failed:'Sending pages failed: ',
                 prompt_abstract_sys:'You are an academic paper analysis expert. Generate a structured abstract including:\n1. Research background and objectives\n2. Methodology\n3. Key findings and conclusions\n4. Significance and contributions\n\nUse academic language, concise and clear.',
                 prompt_abstract_user:'Generate an abstract for:\nTitle: ',
                 prompt_abstract_author:'Authors: ',
@@ -7181,6 +7193,12 @@
                 prompt_lecture_pages:'Pages : {0} - {1}',
                 prompt_lecture_topics:'Sujets : ',
                 prompt_lecture_gen:'Génère les notes de cours à partir du PDF joint.',
+                claude_sync_pages:'Envoyer les pages à Claude',
+                claude_pages_need_r2:'Configurez d\'abord la synchronisation R2 : le connecteur Claude lit les pages depuis R2.',
+                claude_pages_running:'Un envoi de pages est déjà en cours. Attendez la fin.',
+                claude_pages_progress:'Envoi des pages à Claude : {0}/{1}',
+                claude_pages_done:'Envoyé à Claude : {0} pages',
+                claude_pages_failed:'Échec de l\'envoi des pages : ',
                 prompt_abstract_sys:'Tu es un expert en analyse d\'articles scientifiques. Génère un résumé structuré :\n1. Contexte et objectifs\n2. Méthodologie\n3. Résultats et conclusions\n4. Importance et contributions\n\nLangue académique, concis et clair.',
                 prompt_abstract_user:'Génère un résumé pour :\nTitre : ',
                 prompt_abstract_author:'Auteurs : ',
@@ -9984,6 +10002,10 @@
             menu.id = 'longpressMenu';
             
             menu.innerHTML = `
+                <button class="longpress-menu-item" onclick="exportDocPagesForClaude('${id}', '${category}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    ${i18n('claude_sync_pages')}
+                </button>
                 <button class="longpress-menu-item" onclick="archiveItem('${id}', '${category}')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
                     ${i18n('archive')}
@@ -10003,8 +10025,8 @@
             let y = touch.clientY;
             
             // 确保菜单不超出屏幕
-            const menuWidth = 140;
-            const menuHeight = 100;
+            const menuWidth = 180;
+            const menuHeight = 150;
             if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 10;
             if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 10;
             
@@ -15281,7 +15303,236 @@
             if (!options.classroomOnly && result?.casCommitted) {
                 r2DeferredMetadataPublish = false;
             }
+            scheduleClaudeIndexPublish();
             return result;
+        }
+
+        // ==================== Claude 连接器（仓库 mcp/ 目录） ====================
+        // MCP 服务只读 R2 中 claude/ 前缀下的数据：
+        //   claude/index.json                  书目、大纲、讲义编号、书页同步进度
+        //   claude/docs/<id>/manifest.json     每页图片的对象键与字符数
+        //   claude/docs/<id>/p<页>[-<n>].b64   页面 JPEG 的 base64 文本
+        // claude.ai 的工具结果约 15 万字符封顶，base64 图片也计入，所以每张图不超过
+        // CLAUDE_PAGE_MAX_CHARS：先降低 JPEG 质量，仍超限就把页面上下切成两张，再不够才缩小。
+        const CLAUDE_PAGE_WIDTH = 1400;
+        const CLAUDE_PAGE_MAX_CHARS = 120000;
+        const CLAUDE_PAGE_QUALITIES = [0.72, 0.6, 0.5, 0.4];
+        const CLAUDE_PAGES_STATE_KEY = 'mathreader_claude_pages';
+        const CLAUDE_INDEX_DIGEST_KEY = 'mathreader_claude_index_digest';
+        let claudePageExportRunning = false;
+        let claudeIndexPublishTimer = null;
+
+        function claudeR2Configured() {
+            const r2cfg = appData.settings?.r2Config;
+            return !!(r2cfg?.endpoint && r2cfg?.accessKeyId && r2cfg?.secretKey && r2cfg?.bucketName);
+        }
+
+        // 本机导出过的书页进度：{ docId: { ready, total, updatedAt } }
+        function loadClaudePagesState() {
+            try { return JSON.parse(localStorage.getItem(CLAUDE_PAGES_STATE_KEY) || '{}') || {}; }
+            catch (e) { return {}; }
+        }
+
+        function saveClaudePagesState(docId, state) {
+            const all = loadClaudePagesState();
+            all[docId] = state;
+            try { localStorage.setItem(CLAUDE_PAGES_STATE_KEY, JSON.stringify(all)); } catch (e) {}
+        }
+
+        // 依次降低质量编码为 JPEG；都超过上限时返回 null
+        function claudeEncodeCanvas(canvas) {
+            for (const quality of CLAUDE_PAGE_QUALITIES) {
+                const data = canvas.toDataURL('image/jpeg', quality).split(',')[1] || '';
+                if (data.length <= CLAUDE_PAGE_MAX_CHARS) return data;
+            }
+            return null;
+        }
+
+        function claudeCropCanvas(source, top, height, scale) {
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(source.width * scale));
+            canvas.height = Math.max(1, Math.round(height * scale));
+            canvas.getContext('2d').drawImage(source, 0, top, source.width, height, 0, 0, canvas.width, canvas.height);
+            return canvas;
+        }
+
+        // 一页编码为一张图，或上下两张
+        function claudeEncodePage(canvas) {
+            const whole = claudeEncodeCanvas(canvas);
+            if (whole) return [whole];
+            const half = Math.ceil(canvas.height / 2);
+            const parts = [];
+            for (const [top, height] of [[0, half], [half, canvas.height - half]]) {
+                let data = null;
+                for (let scale = 1; !data && scale >= 0.5; scale -= 0.25) {
+                    const piece = claudeCropCanvas(canvas, top, height, scale);
+                    data = claudeEncodeCanvas(piece);
+                    piece.width = piece.height = 0;
+                }
+                if (!data) throw new Error('page image too large');
+                parts.push(data);
+            }
+            return parts;
+        }
+
+        async function claudeRenderPage(pdf, pageNum) {
+            const page = await pdf.getPage(pageNum);
+            const scale = CLAUDE_PAGE_WIDTH / page.getViewport({ scale: 1 }).width;
+            const viewport = page.getViewport({ scale });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(viewport.width);
+            canvas.height = Math.round(viewport.height);
+            const ctx = canvas.getContext('2d');
+            // JPEG 没有透明通道，未铺底的区域会变黑
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            page.cleanup();
+            return canvas;
+        }
+
+        async function claudeLoadDocPdf(doc) {
+            let fileData = doc.data || await getFileData(doc.id);
+            if (!fileData) {
+                fileData = await r2GetObject('files/' + doc.id + '.pdf');
+                if (fileData) await saveFileData(doc.id, fileData);
+            }
+            if (!fileData) throw new Error(i18n('toast_file_data_lost'));
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
+            const bytes = await decodePdfDataInChunks(fileData);
+            // 字符串解码得到的是新数组；直接传入的字节要复制，pdf.js 会转移它的缓冲区
+            return pdfjsLib.getDocument({ data: typeof fileData === 'string' ? bytes : bytes.slice(0) }).promise;
+        }
+
+        async function exportDocPagesForClaude(id, category) {
+            closeLongPressMenu();
+            if (!claudeR2Configured()) {
+                showToast(i18n('claude_pages_need_r2'));
+                return;
+            }
+            if (claudePageExportRunning) {
+                showToast(i18n('claude_pages_running'));
+                return;
+            }
+            const doc = (category === 'paper' ? appData.papers : appData.books).find(d => d.id === id);
+            if (!doc) return;
+            if (doc.type !== 'pdf') {
+                showToast(i18n('prompt_pdf_only'));
+                return;
+            }
+            claudePageExportRunning = true;
+            let pdf = null;
+            try {
+                showToast(i18n('toast_processing'));
+                pdf = await claudeLoadDocPdf(doc);
+                const total = pdf.numPages;
+                const fingerprint = pdf.fingerprints?.[0] || '';
+                const prefix = 'claude/docs/' + doc.id + '/';
+                let manifest = null;
+                try { manifest = JSON.parse(await r2GetObject(prefix + 'manifest.json') || 'null'); } catch (e) {}
+                // 换过文件或渲染宽度时从头导出；否则跳过已上传的页，从断点继续
+                if (!manifest || manifest.totalPages !== total || manifest.width !== CLAUDE_PAGE_WIDTH ||
+                        manifest.fingerprint !== fingerprint) {
+                    manifest = {
+                        version: 1, docId: doc.id, fingerprint, totalPages: total, width: CLAUDE_PAGE_WIDTH, pages: {}
+                    };
+                }
+                const saveManifest = async () => {
+                    manifest.updatedAt = new Date().toISOString();
+                    await r2PutObject(prefix + 'manifest.json', JSON.stringify(manifest), 'application/json');
+                };
+                let sinceSave = 0;
+                for (let n = 1; n <= total; n++) {
+                    if (manifest.pages[n]?.length) continue;
+                    const canvas = await claudeRenderPage(pdf, n);
+                    let parts;
+                    try { parts = claudeEncodePage(canvas); }
+                    finally { canvas.width = canvas.height = 0; }
+                    const entries = [];
+                    for (let i = 0; i < parts.length; i++) {
+                        const key = prefix + 'p' + n + (parts.length > 1 ? '-' + (i + 1) : '') + '.b64';
+                        await r2PutObject(key, parts[i], 'text/plain; charset=utf-8');
+                        entries.push({ key, mime: 'image/jpeg', chars: parts[i].length });
+                    }
+                    manifest.pages[n] = entries;
+                    if (++sinceSave >= 10) {
+                        sinceSave = 0;
+                        await saveManifest();
+                        showToast(i18n('claude_pages_progress', n, total));
+                    }
+                }
+                await saveManifest();
+                saveClaudePagesState(doc.id, {
+                    ready: Object.keys(manifest.pages).length, total, updatedAt: manifest.updatedAt
+                });
+                await publishClaudeIndex({ force: true });
+                showToast(i18n('claude_pages_done', total));
+            } catch (e) {
+                console.error('同步书页给 Claude 失败:', e);
+                showToast(i18n('claude_pages_failed') + (e?.message || e));
+            } finally {
+                if (pdf) pdf.destroy();
+                claudePageExportRunning = false;
+            }
+        }
+
+        function buildClaudeIndexDocuments(pagesFor) {
+            const documents = [];
+            const add = (doc, kind) => {
+                if (!doc || doc.type !== 'pdf') return;
+                const lectureChapters = kind === 'book' ? (appData.lectures?.[doc.id]?.chapters || []) : [];
+                const chapters = (doc.aiOutline?.chapters || []).map((ch, index) => {
+                    // 讲义章节按大纲顺序建立；标题一致才视为同一节
+                    const lecture = lectureChapters[index];
+                    return {
+                        index,
+                        title: ch.title || '',
+                        topics: ch.topics || [],
+                        startPage: ch.startPage,
+                        endPage: ch.endPage,
+                        lectureId: lecture && lecture.status === 'ready' && lecture.title === ch.title ? lecture.id : null
+                    };
+                });
+                documents.push({
+                    id: doc.id,
+                    kind,
+                    title: doc.title || '',
+                    author: doc.author || '',
+                    subject: doc.subject || '',
+                    totalPages: Number(doc.totalPages) || null,
+                    chapters,
+                    pages: pagesFor(doc.id)
+                });
+            };
+            (appData.books || []).forEach(doc => add(doc, 'book'));
+            (appData.papers || []).forEach(doc => add(doc, 'paper'));
+            return documents;
+        }
+
+        // 书目、大纲和讲义编号写入 claude/index.json；与上次上传的内容相同则跳过
+        async function publishClaudeIndex(options = {}) {
+            if (!appDataLoaded || !claudeR2Configured()) return;
+            const localPages = loadClaudePagesState();
+            const digest = await sha256Hex(JSON.stringify(buildClaudeIndexDocuments(id => localPages[id] || null)));
+            if (!options.force && digest === localStorage.getItem(CLAUDE_INDEX_DIGEST_KEY)) return;
+            // 其他设备导出的书页进度只记在云端索引里，本机没有记录的沿用云端
+            const cloudPages = {};
+            try {
+                const cloud = JSON.parse(await r2GetObject('claude/index.json') || 'null');
+                (cloud?.documents || []).forEach(d => { if (d?.id && d.pages) cloudPages[d.id] = d.pages; });
+            } catch (e) {}
+            const documents = buildClaudeIndexDocuments(id => localPages[id] || cloudPages[id] || null);
+            await r2PutObject('claude/index.json',
+                JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), documents }),
+                'application/json');
+            try { localStorage.setItem(CLAUDE_INDEX_DIGEST_KEY, digest); } catch (e) {}
+        }
+
+        function scheduleClaudeIndexPublish() {
+            clearTimeout(claudeIndexPublishTimer);
+            claudeIndexPublishTimer = setTimeout(() => {
+                publishClaudeIndex().catch(e => console.warn('Claude 索引上传失败:', e));
+            }, 3000);
         }
 
         // 清理doc对象用于同步：去掉data、chatHistory中去掉screenshot并限制30条
@@ -16795,6 +17046,8 @@
                 if (metadataPublishResult.casCommitted) {
                     await flushClassroomDeletionOutboxAfterMetadata();
                 }
+                // 手动全量同步时重传 Claude 连接器的书目索引
+                publishClaudeIndex({ force: true }).catch(e => console.warn('Claude 索引上传失败:', e));
 
                 // 2. 上传PDF文件 (从IndexedDB获取)
                 let uploadedFiles = 0;
