@@ -385,6 +385,8 @@ GitHub Actions 在同仓库 PR 和 `main` 更新后自动构建。默认分支�
 
 `versionCode` 随 `Build APK` workflow run 自动递增，版本号基数保存在仓库变量 `APK_VERSION_CODE_BASE`。不要降低该变量；重建 workflow 导致 run number 重新计数时，应先提高基数。
 
+本仓库（math-reader-claude）复制自 math-reader-boox，run number 从 1 重新计数。未设置 `APK_VERSION_CODE_BASE` 时工作流使用默认基数 150400，构建出的 versionCode 高于 math-reader-boox 的 1.0.2-ci.304.1（150401）；未设置 `APK_SIGNING_CERT_SHA256` 时使用 math-reader-boox 的签名证书指纹 `3CD2D6EAB2C5E17B1B947A929C274B1BE40C3C13FA9E58F8F5A64D26FEA2DB94`。签名还需要在本仓库添加与 math-reader-boox 相同的 Secrets `APK_SIGNING_KEYSTORE_BASE64` 和 `APK_SIGNING_PASSWORD`，这样新 APK 可以直接覆盖安装原应用。
+
 本地构建需要 Android SDK，并能访问 `repo.boox.com`：
 
 ```bash

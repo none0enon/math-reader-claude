@@ -33,7 +33,10 @@ jobs:
         id: version
         shell: bash
         env:
-          VERSION_CODE_BASE: ${{ vars.APK_VERSION_CODE_BASE }}
+          # 本仓库复制自 math-reader-boox，运行编号从 1 重新计数。未设置仓库变量时基数取 150400，
+          # 任一次运行的 versionCode 都不低于 150501，高于 math-reader-boox 已签名的
+          # 1.0.2-ci.304.1 (150401)，可直接覆盖安装。Sign APK 用同一表达式，两处必须一致。
+          VERSION_CODE_BASE: ${{ vars.APK_VERSION_CODE_BASE || '150400' }}
         run: |
           set -euo pipefail
           [[ "$VERSION_CODE_BASE" =~ ^[0-9]+$ ]]
