@@ -80,14 +80,14 @@ function createServer(env: Env): McpServer {
 
   registerAppTool(server, 'show_library', {
     title: '显示书库',
-    description: '在对话中显示可交互的书库界面：书目、每本书的大纲（节标题、PDF 页码、主题）、书页同步进度和 math-reader 已有的讲义。用户在界面里展开大纲、点某一节的“写讲义”，界面会发来带页码范围的写讲义请求。用户想浏览书库、找书或挑选章节时调用。',
+    description: '在对话中显示可点选的书库界面：用户用鼠标先点一本书，再点一节（或填页码范围），点“写讲义”后界面会发来带页码范围的写讲义请求；用户选中的书和节也会作为上下文告诉你。用户想浏览书库、找书、挑选章节时调用。',
     annotations: READ_ONLY,
     _meta: { ui: { resourceUri: LIBRARY_UI_URI } },
   }, () => run(async () => {
     const view = await buildLibraryView(env, await loadIndex(env));
     // 界面数据放在 structuredContent（不进入模型上下文）；文字部分给模型和不支持界面的客户端
     const text = view.documents.length
-      ? `已在对话中显示书库界面，共 ${view.documents.length} 个 PDF；用户可以在界面里展开大纲并点“写讲义”。\n` +
+      ? `已在对话中显示书库界面，共 ${view.documents.length} 个 PDF；用户可以在界面里点书、点节，再点“写讲义”。\n` +
         view.documents.map(documentLine).join('\n')
       : '书库里没有 PDF 书籍或论文。';
     return { content: [{ type: 'text', text }], structuredContent: view };

@@ -8,9 +8,10 @@ import libraryHtml from './library.html';
 
 export const LIBRARY_UI_URI = 'ui://math-reader/library.html';
 
-/** 界面脚本从 unpkg 加载（版本和完整性哈希固定在 library.html），CSP 只放行这个域名 */
+// CSP 放行两个来源：unpkg 提供界面脚本（版本和完整性哈希固定在 library.html），
+// assets.claude.ai 提供 Claude 的界面字体。不要宿主的边框，界面自己画卡片，背景透明。
 export const LIBRARY_UI_META = {
-  ui: { csp: { resourceDomains: ['https://unpkg.com'] }, prefersBorder: true },
+  ui: { csp: { resourceDomains: ['https://unpkg.com', 'https://assets.claude.ai'] }, prefersBorder: false },
 };
 
 // 随结果附带的大纲总量上限（字符）；超出部分的书在界面展开时用 library_outline 读取

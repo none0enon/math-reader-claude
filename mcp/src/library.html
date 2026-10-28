@@ -9,258 +9,260 @@
 <link rel="modulepreload" href="https://unpkg.com/@modelcontextprotocol/ext-apps@1.7.5/dist/src/app-with-deps.js"
       integrity="sha384-wSTuCTWt2+bD7kgcVHbiUFIEDVUNFUZjWmT/T0NTP1RTg45gZJ4zVNOYLvujAZ/I" crossorigin="anonymous">
 <style>
-  /* 宿主（Claude）提供主题变量时以内联样式覆盖这里的默认值 */
+  /* 颜色和字号取 Claude 下发的样式变量；括号里的值只在宿主没提供变量时使用 */
   :root {
     color-scheme: light dark;
-    --color-background-primary: #ffffff;
-    --color-background-secondary: #f5f5f3;
-    --color-background-tertiary: #ebebe8;
-    --color-background-inverse: #1f1f1e;
-    --color-background-success: #e7f2e4;
-    --color-background-warning: #fbf0db;
-    --color-background-info: #e5eef9;
-    --color-text-primary: #1f1f1e;
-    --color-text-secondary: #5e5d59;
-    --color-text-tertiary: #8a8985;
-    --color-text-inverse: #ffffff;
-    --color-text-success: #2e6b2c;
-    --color-text-warning: #855600;
-    --color-text-info: #1f5ea6;
-    --color-text-danger: #b3261e;
-    --color-border-secondary: rgba(31, 31, 30, 0.2);
-    --color-border-tertiary: rgba(31, 31, 30, 0.1);
-    --color-ring-primary: #2f6fd6;
-  }
-  :root[data-theme="dark"] {
-    --color-background-primary: #262624;
-    --color-background-secondary: #30302e;
-    --color-background-tertiary: #3a3a37;
-    --color-background-inverse: #f5f4ef;
-    --color-background-success: rgba(98, 170, 92, 0.2);
-    --color-background-warning: rgba(214, 158, 46, 0.2);
-    --color-background-info: rgba(92, 145, 220, 0.2);
-    --color-text-primary: #f5f4ef;
-    --color-text-secondary: #c2c0b6;
-    --color-text-tertiary: #9a9893;
-    --color-text-inverse: #1f1f1e;
-    --color-text-success: #9bd396;
-    --color-text-warning: #efc56c;
-    --color-text-info: #9cc2f2;
-    --color-text-danger: #f2978f;
-    --color-border-secondary: rgba(245, 244, 239, 0.2);
-    --color-border-tertiary: rgba(245, 244, 239, 0.1);
-    --color-ring-primary: #7aa7ee;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-      --color-background-primary: #262624;
-      --color-background-secondary: #30302e;
-      --color-background-tertiary: #3a3a37;
-      --color-background-inverse: #f5f4ef;
-      --color-background-success: rgba(98, 170, 92, 0.2);
-      --color-background-warning: rgba(214, 158, 46, 0.2);
-      --color-background-info: rgba(92, 145, 220, 0.2);
-      --color-text-primary: #f5f4ef;
-      --color-text-secondary: #c2c0b6;
-      --color-text-tertiary: #9a9893;
-      --color-text-inverse: #1f1f1e;
-      --color-text-success: #9bd396;
-      --color-text-warning: #efc56c;
-      --color-text-info: #9cc2f2;
-      --color-text-danger: #f2978f;
-      --color-border-secondary: rgba(245, 244, 239, 0.2);
-      --color-border-tertiary: rgba(245, 244, 239, 0.1);
-      --color-ring-primary: #7aa7ee;
-    }
+    --mr-text: var(--color-text-primary, light-dark(#141413, #faf9f5));
+    --mr-text-2: var(--color-text-secondary, light-dark(#3d3d3a, #c2c0b6));
+    --mr-text-3: var(--color-text-tertiary, light-dark(#73726c, #9c9a92));
+    --mr-bg-2: var(--color-background-secondary, light-dark(#f5f4ed, #262624));
+    --mr-inverse-bg: var(--color-background-inverse, light-dark(#141413, #faf9f5));
+    --mr-inverse-text: var(--color-text-inverse, light-dark(#ffffff, #141413));
+    --mr-border: var(--color-border-tertiary, light-dark(rgba(31, 30, 29, 0.15), rgba(222, 220, 209, 0.15)));
+    --mr-border-2: var(--color-border-secondary, light-dark(rgba(31, 30, 29, 0.3), rgba(222, 220, 209, 0.3)));
+    --mr-ring: var(--color-ring-primary, light-dark(rgba(20, 20, 19, 0.7), rgba(250, 249, 245, 0.7)));
+    --mr-ok-bg: var(--color-background-success, light-dark(#e9f1dc, #1b4614));
+    --mr-ok: var(--color-text-success, light-dark(#265b19, #7ab948));
+    --mr-warn-bg: var(--color-background-warning, light-dark(#f6eedf, #483a0f));
+    --mr-warn: var(--color-text-warning, light-dark(#5a4815, #d1a041));
+    --mr-info-bg: var(--color-background-info, light-dark(#d6e4f6, #253e5f));
+    --mr-info: var(--color-text-info, light-dark(#3266ad, #80aadd));
+    --mr-danger: var(--color-text-danger, light-dark(#7f2c28, #ee8884));
+    --mr-bw: var(--border-width-regular, 0.5px);
+    --mr-r-sm: var(--border-radius-sm, 6px);
+    --mr-r-md: var(--border-radius-md, 8px);
+    --mr-r-lg: var(--border-radius-lg, 10px);
+    --mr-r-full: var(--border-radius-full, 9999px);
+    --mr-xs: var(--font-text-xs-size, 12px);
+    --mr-sm: var(--font-text-sm-size, 14px);
+    --mr-md: var(--font-text-md-size, 16px);
+    --mr-strong: var(--font-weight-semibold, 600);
   }
 
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
+  html, body { margin: 0; padding: 0; background: transparent; }
   body {
     font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif);
-    font-size: var(--font-text-sm-size, 14px);
-    line-height: var(--font-text-sm-line-height, 1.5);
-    color: var(--color-text-primary);
-    background: var(--color-background-primary);
+    font-size: var(--mr-sm);
+    line-height: var(--font-text-sm-line-height, 1.4);
+    color: var(--mr-text);
     -webkit-text-size-adjust: 100%;
   }
   button, input { font: inherit; color: inherit; }
-  :focus-visible { outline: 2px solid var(--color-ring-primary); outline-offset: 1px; }
+  :focus-visible { outline: 2px solid var(--mr-ring); outline-offset: 1px; }
   [hidden] { display: none !important; }
 
-  #root { display: flex; flex-direction: column; max-height: var(--view-max-height, 640px); }
-  html.fullscreen #root { height: 100vh; max-height: none; }
+  #root { padding: 2px; }
+  html.fullscreen #root { height: 100vh; height: 100dvh; padding: 0; }
 
-  header {
-    flex: none;
+  .btn {
+    min-height: 36px;
+    padding: 6px 14px;
+    border: var(--mr-bw) solid var(--mr-border-2);
+    border-radius: var(--mr-r-md);
+    background: transparent;
+    font-weight: var(--mr-strong);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .btn:hover:not(:disabled) { background: var(--mr-bg-2); }
+  .btn.primary { border-color: transparent; background: var(--mr-inverse-bg); color: var(--mr-inverse-text); }
+  .btn.primary:hover:not(:disabled) { background: var(--mr-inverse-bg); opacity: 0.88; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    padding: 0 8px;
+    border: var(--mr-bw) solid var(--mr-border-2);
+    border-radius: var(--mr-r-full);
+    color: var(--mr-text-2);
+    font-size: var(--mr-xs);
+    font-weight: normal;
+    line-height: 20px;
+    white-space: nowrap;
+  }
+  .chip.ok { border-color: transparent; background: var(--mr-ok-bg); color: var(--mr-ok); }
+  .chip.warn { border-color: transparent; background: var(--mr-warn-bg); color: var(--mr-warn); }
+  .chip.info { border-color: transparent; background: var(--mr-info-bg); color: var(--mr-info); }
+
+  .sk { display: block; height: 12px; border-radius: 4px; background: var(--mr-bg-2); animation: mr-pulse 1.4s ease-in-out infinite; }
+  @keyframes mr-pulse { 50% { opacity: 0.45; } }
+
+  /* ---------- 对话里的卡片 ---------- */
+  #card {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px 10px;
-    border-bottom: 1px solid var(--color-border-tertiary);
+    gap: 6px;
+    padding: 14px 16px;
+    border: var(--mr-bw) solid var(--mr-border-2);
+    border-radius: var(--mr-r-lg);
   }
-  .titlebar { display: flex; align-items: center; gap: 8px; }
-  .titlebar h1 {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-    font-size: var(--font-heading-sm-size, 16px);
-    line-height: var(--font-heading-sm-line-height, 1.4);
-    font-weight: var(--font-weight-semibold, 600);
-  }
-  .summary { color: var(--color-text-secondary); font-size: var(--font-text-xs-size, 12px); }
+  .card-head { display: flex; align-items: center; gap: 8px; font-size: var(--mr-md); font-weight: var(--mr-strong); }
+  .card-head svg { flex: none; width: 18px; height: 18px; color: var(--mr-text-2); }
+  .card-summary { color: var(--mr-text-2); }
+  .card-summary.error { color: var(--mr-danger); }
+  .card-note { color: var(--mr-text-3); font-size: var(--mr-xs); overflow-wrap: anywhere; }
+  .card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+  /* ---------- 选择器 ---------- */
+  #picker { display: flex; flex-direction: column; }
+  html.fullscreen #picker { height: 100%; }
+  html:not(.fullscreen) #picker { border: var(--mr-bw) solid var(--mr-border-2); border-radius: var(--mr-r-lg); }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; }
+  .top { flex: none; flex-wrap: wrap; border-bottom: var(--mr-bw) solid var(--mr-border-2); }
+  .top-title { font-size: var(--mr-md); font-weight: var(--mr-strong); white-space: nowrap; }
   .search {
-    width: 100%;
+    flex: 1 1 200px;
+    min-width: 0;
+    min-height: 36px;
     padding: 6px 10px;
-    border: 1px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md, 8px);
-    background: var(--color-background-primary);
+    border: var(--mr-bw) solid var(--mr-border-2);
+    border-radius: var(--mr-r-md);
+    background: transparent;
   }
-  .search::placeholder { color: var(--color-text-tertiary); }
+  .search::placeholder { color: var(--mr-text-3); }
 
-  #list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-  .placeholder { padding: 28px 16px; text-align: center; color: var(--color-text-secondary); }
-  .error { color: var(--color-text-danger); }
+  .panes { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(220px, 34%) 1fr; }
+  .pane { min-width: 0; padding: 8px; }
+  html.fullscreen .pane { overflow-y: auto; overscroll-behavior: contain; }
+  .books { border-right: var(--mr-bw) solid var(--mr-border-2); }
+  #picker.single .panes { grid-template-columns: 1fr; }
+  #picker.single .books { border-right: 0; }
+  #picker.single:not(.show-chapters) .chapters { display: none; }
+  #picker.single.show-chapters .books { display: none; }
+  #picker:not(.single) .back { display: none; }
 
-  .doc { border-bottom: 1px solid var(--color-border-tertiary); }
-  .doc:last-child { border-bottom: 0; }
-  .doc-head {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
+  .group { padding: 10px 10px 4px; color: var(--mr-text-3); font-size: var(--mr-xs); }
+  .empty { margin: 0; padding: 20px 10px; color: var(--mr-text-2); text-align: center; }
+  .empty.error { color: var(--mr-danger); }
+
+  .book, .chapter {
     width: 100%;
-    padding: 10px 16px;
+    min-height: 44px;
+    padding: 8px 10px;
     border: 0;
+    border-radius: var(--mr-r-md);
     background: none;
     text-align: left;
     cursor: pointer;
   }
-  .doc-head:hover { background: var(--color-background-secondary); }
-  .chev { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--color-text-tertiary); transition: transform 0.15s; }
-  .doc.open .chev { transform: rotate(90deg); }
-  .doc-main { flex: 1; min-width: 0; }
-  .doc-title { font-weight: var(--font-weight-semibold, 600); overflow-wrap: anywhere; }
-  .doc-meta { color: var(--color-text-secondary); font-size: var(--font-text-xs-size, 12px); overflow-wrap: anywhere; }
-  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-  .chip {
-    display: inline-block;
-    padding: 0 8px;
-    border-radius: var(--border-radius-full, 999px);
-    background: var(--color-background-secondary);
-    color: var(--color-text-secondary);
-    font-size: var(--font-text-xs-size, 12px);
-    line-height: 20px;
-    white-space: nowrap;
-  }
-  .chip.ok { background: var(--color-background-success); color: var(--color-text-success); }
-  .chip.warn { background: var(--color-background-warning); color: var(--color-text-warning); }
-  .chip.info { background: var(--color-background-info); color: var(--color-text-info); }
+  .book:hover, .chapter:hover { background: var(--mr-bg-2); }
+  .book.selected, .chapter.selected { background: var(--mr-bg-2); box-shadow: inset 3px 0 0 var(--mr-text); }
+  .book { display: flex; flex-direction: column; gap: 3px; }
+  .book-title { font-weight: var(--mr-strong); overflow-wrap: anywhere; }
+  .book-meta { color: var(--mr-text-2); font-size: var(--mr-xs); overflow-wrap: anywhere; }
 
-  .doc-body { padding: 0 16px 12px 42px; }
-  .note { margin: 0; color: var(--color-text-tertiary); font-size: var(--font-text-xs-size, 12px); }
-  .doc-body > .note { padding: 4px 0 8px; }
-  .chapters { list-style: none; margin: 0; padding: 0; }
-  .chapter { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--color-border-tertiary); }
-  .chapter:first-child { border-top: 0; }
-  .ch-index {
-    flex: none;
-    min-width: 1.8em;
-    color: var(--color-text-tertiary);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-  }
-  .ch-main { flex: 1; min-width: 0; }
-  .ch-title { font-weight: var(--font-weight-medium, 500); overflow-wrap: anywhere; }
-  .ch-pages { margin-left: 8px; color: var(--color-text-secondary); font-size: var(--font-text-xs-size, 12px); font-weight: normal; white-space: nowrap; }
-  .ch-topics {
-    color: var(--color-text-tertiary);
-    font-size: var(--font-text-xs-size, 12px);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .ch-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
-  .ch-action { flex: none; }
-
-  .btn {
-    padding: 4px 12px;
-    border: 1px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md, 8px);
-    background: var(--color-background-primary);
-    font-size: var(--font-text-xs-size, 12px);
-    line-height: 20px;
-    white-space: nowrap;
+  .back {
+    min-height: 40px;
+    margin-bottom: 4px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: var(--mr-r-md);
+    background: none;
+    color: var(--mr-text-2);
     cursor: pointer;
   }
-  .btn:hover:not(:disabled) { background: var(--color-background-secondary); }
-  .btn.primary { border-color: transparent; background: var(--color-background-inverse); color: var(--color-text-inverse); }
-  .btn.primary:hover:not(:disabled) { opacity: 0.88; background: var(--color-background-inverse); }
-  .btn:disabled { opacity: 0.4; cursor: default; }
+  .back:hover { background: var(--mr-bg-2); }
+  .pane-head { padding: 6px 10px 10px; }
+  .pane-title { font-size: var(--mr-md); font-weight: var(--mr-strong); overflow-wrap: anywhere; }
+
+  .chapter { display: grid; grid-template-columns: 2em minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+  .ch-index { color: var(--mr-text-3); text-align: right; font-variant-numeric: tabular-nums; }
+  .ch-main { display: flex; flex-direction: column; min-width: 0; }
+  .ch-title { overflow-wrap: anywhere; }
+  .chapter.selected .ch-title { font-weight: var(--mr-strong); }
+  .chapter.match .ch-title { text-decoration: underline; text-decoration-color: var(--mr-info); text-underline-offset: 3px; }
+  .ch-topics { color: var(--mr-text-3); font-size: var(--mr-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ch-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .ch-pages { color: var(--mr-text-2); font-size: var(--mr-xs); white-space: nowrap; }
 
   .range {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
-    margin-top: 4px;
-    padding-top: 10px;
-    border-top: 1px dashed var(--color-border-secondary);
-    color: var(--color-text-secondary);
-    font-size: var(--font-text-xs-size, 12px);
+    gap: 8px 12px;
+    margin-top: 8px;
+    padding: 10px;
+    border: var(--mr-bw) dashed var(--mr-border-2);
+    border-radius: var(--mr-r-md);
+    cursor: pointer;
   }
+  .range.selected { border-style: solid; background: var(--mr-bg-2); box-shadow: inset 3px 0 0 var(--mr-text); }
+  .range-label { font-weight: var(--mr-strong); }
+  .range-inputs { display: inline-flex; align-items: center; gap: 6px; color: var(--mr-text-2); }
   .range input {
     width: 4.5em;
-    padding: 3px 6px;
-    border: 1px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-sm, 6px);
-    background: var(--color-background-primary);
+    min-height: 32px;
+    padding: 4px 6px;
+    border: var(--mr-bw) solid var(--mr-border-2);
+    border-radius: var(--mr-r-sm);
+    background: transparent;
     text-align: center;
   }
+
+  .foot { flex: none; justify-content: space-between; border-top: var(--mr-bw) solid var(--mr-border-2); }
+  .selection { display: flex; flex-direction: column; min-width: 0; }
+  .sel-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .sel-text.muted { color: var(--mr-text-3); }
+  .sel-warn { color: var(--mr-warn); font-size: var(--mr-xs); }
 
   #toast {
     position: fixed;
     left: 50%;
-    bottom: 12px;
-    transform: translateX(-50%);
+    bottom: calc(16px + var(--mr-safe-bottom, 0px));
     max-width: calc(100% - 32px);
     padding: 6px 14px;
-    border-radius: var(--border-radius-md, 8px);
-    background: var(--color-background-inverse);
-    color: var(--color-text-inverse);
-    font-size: var(--font-text-xs-size, 12px);
+    border-radius: var(--mr-r-md);
+    background: var(--mr-inverse-bg);
+    color: var(--mr-inverse-text);
+    font-size: var(--mr-xs);
+    transform: translateX(-50%);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
   }
   #toast.show { opacity: 1; }
 
-  @media (max-width: 440px) {
-    .doc-body { padding-left: 16px; }
-    .chapter { flex-wrap: wrap; }
-    .ch-action { width: 100%; padding-left: calc(1.8em + 10px); }
-  }
   @media (pointer: coarse) {
-    .btn { padding: 6px 14px; }
-    .doc-head { padding-top: 12px; padding-bottom: 12px; }
+    .btn { min-height: 44px; }
+    .range input { min-height: 40px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .chev, #toast { transition: none; }
+    .sk { animation: none; }
+    #toast { transition: none; }
   }
 </style>
 </head>
 <body>
 <div id="root">
-  <header>
-    <div class="titlebar">
-      <h1>Math Reader 书库</h1>
-      <button class="btn" id="refresh" type="button">刷新</button>
-      <button class="btn" id="fullscreen" type="button" hidden>全屏</button>
+  <section id="card" aria-label="Math Reader 书库">
+    <div class="card-head">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>Math Reader 书库</span>
     </div>
-    <div class="summary" id="summary"></div>
-    <input class="search" id="search" type="search" placeholder="搜索书名、作者或章节" aria-label="搜索书名、作者或章节" autocomplete="off">
-  </header>
-  <div id="list"></div>
+    <div class="card-summary" id="cardSummary"></div>
+    <div class="card-note" id="cardNote" hidden></div>
+    <div class="card-actions">
+      <button class="btn primary" id="openPicker" type="button" hidden>选择书和章节</button>
+      <button class="btn" id="cardRetry" type="button" hidden>重试</button>
+    </div>
+  </section>
+
+  <section id="picker" hidden aria-label="Math Reader 书库">
+    <div class="bar top">
+      <span class="top-title">Math Reader 书库</span>
+      <input class="search" id="search" type="search" placeholder="搜索书名、作者、章节" aria-label="搜索书名、作者、章节" autocomplete="off">
+      <button class="btn" id="refresh" type="button">刷新</button>
+    </div>
+    <div class="panes">
+      <div class="pane books" id="books"></div>
+      <div class="pane chapters" id="chapters"></div>
+    </div>
+    <div class="bar foot">
+      <div class="selection" id="selection"></div>
+      <button class="btn primary" id="write" type="button" disabled>写讲义</button>
+    </div>
+  </section>
 </div>
 <div id="toast" role="status"></div>
 
@@ -268,35 +270,53 @@
   const SDK_URL = 'https://unpkg.com/@modelcontextprotocol/ext-apps@1.7.5/dist/src/app-with-deps.js';
   // 写讲义请求的模板，由服务器在下发界面时填入；{{document}} {{id}} {{part}} {{start}} {{end}} 由界面替换
   const LECTURE_TEMPLATE = /*LECTURE_TEMPLATE*/"";
-  // 内嵌在对话里时的最大高度，更长的列表在框内滚动；全屏时铺满
-  const INLINE_MAX_HEIGHT = 640;
+  // 窄于这个宽度时，书目和章节分两步显示
+  const SINGLE_PANE_WIDTH = 640;
 
-  const rootEl = document.getElementById('root');
-  const listEl = document.getElementById('list');
-  const summaryEl = document.getElementById('summary');
-  const searchEl = document.getElementById('search');
-  const refreshEl = document.getElementById('refresh');
-  const fullscreenEl = document.getElementById('fullscreen');
-  const toastEl = document.getElementById('toast');
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    root: $('root'),
+    card: $('card'),
+    cardSummary: $('cardSummary'),
+    cardNote: $('cardNote'),
+    openPicker: $('openPicker'),
+    cardRetry: $('cardRetry'),
+    picker: $('picker'),
+    search: $('search'),
+    refresh: $('refresh'),
+    books: $('books'),
+    chapters: $('chapters'),
+    selection: $('selection'),
+    write: $('write'),
+    toast: $('toast'),
+  };
 
   const state = {
     status: 'loading', // loading | ready | error
     message: '',
     view: null, // { updatedAt, documents }
+    displayMode: 'inline',
+    // 宿主不支持全屏时，选择器直接显示在对话里
+    inlinePicker: false,
     query: '',
-    expanded: new Set(),
-    // 搜索命中章节时自动展开的书里，用户手动收起的
-    collapsedInSearch: new Set(),
-    // 结果里没附带大纲的书，展开时读取
+    bookId: null,
+    selection: null, // { kind: 'chapter', index } | { kind: 'range' }
+    // 单栏布局时显示章节栏
+    showChapters: false,
+    // 结果里没附带大纲的书，选中时读取
     outlines: new Map(),
     outlineLoading: new Set(),
     outlineErrors: new Map(),
     ranges: new Map(),
-    sending: null,
+    sending: false,
+    refreshing: false,
+    lastSent: '',
   };
 
   let sdk = null;
   let app = null;
+
+  // ---------- 工具函数 ----------
 
   function h(tag, props, ...children) {
     const node = document.createElement(tag);
@@ -304,6 +324,8 @@
       if (value === undefined || value === null || value === false) continue;
       if (key === 'class') node.className = value;
       else if (key === 'text') node.textContent = value;
+      // 用 CSSOM 设置样式，不写 style 属性（沙箱的 CSP 可能禁止内联样式属性）
+      else if (key === 'style') Object.assign(node.style, value);
       else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
       else node.setAttribute(key, value === true ? '' : String(value));
     }
@@ -318,28 +340,19 @@
     return h('span', { class: tone ? 'chip ' + tone : 'chip', text });
   }
 
-  function chevron() {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'chev');
-    svg.setAttribute('viewBox', '0 0 16 16');
-    svg.setAttribute('aria-hidden', 'true');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M6 3.5 10.5 8 6 12.5');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', 'currentColor');
-    path.setAttribute('stroke-width', '1.6');
-    path.setAttribute('stroke-linecap', 'round');
-    path.setAttribute('stroke-linejoin', 'round');
-    svg.append(path);
-    return svg;
+  function skeleton(rows) {
+    return h('div', { 'aria-hidden': 'true' },
+      Array.from({ length: rows }, (_, i) => h('div', { style: { padding: '12px 10px' } },
+        h('span', { class: 'sk', style: { width: `${70 - (i % 3) * 15}%` } }),
+        h('span', { class: 'sk', style: { width: '40%', marginTop: '8px', height: '10px' } }))));
   }
 
   let toastTimer = null;
   function toast(text) {
-    toastEl.textContent = text;
-    toastEl.classList.add('show');
+    els.toast.textContent = text;
+    els.toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+    toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2600);
   }
 
   function resultText(result) {
@@ -350,151 +363,34 @@
     return typeof text === 'string' && text.toLowerCase().includes(query);
   }
 
+  function chapterMatches(ch, query) {
+    return includes(ch.title, query) || (ch.topics || []).some((t) => includes(t, query));
+  }
+
+  function bookById(id) {
+    return state.view?.documents.find((doc) => doc.id === id) || null;
+  }
+
   function chaptersOf(doc) {
     return doc.chapters ?? state.outlines.get(doc.id) ?? null;
   }
 
-  function locale() {
-    return app?.getHostContext()?.locale || undefined;
+  function totalPagesOf(doc) {
+    return doc.pages?.total || doc.totalPages || 0;
   }
 
-  // ---------- 渲染 ----------
-
-  function render() {
-    renderSummary();
-    listEl.replaceChildren(...listContent());
+  function validRange(start, end) {
+    return Number.isInteger(start) && Number.isInteger(end) && start >= 1 && end >= start;
   }
 
-  function renderSummary() {
-    if (state.status !== 'ready') {
-      summaryEl.textContent = '';
-      return;
-    }
-    const docs = state.view.documents;
-    const books = docs.filter((d) => d.kind !== 'paper').length;
-    const parts = [`${books} 本书`, `${docs.length - books} 篇论文`];
-    const updated = state.view.updatedAt ? new Date(state.view.updatedAt) : null;
-    if (updated && !Number.isNaN(updated.getTime())) {
-      parts.push('书库更新于 ' + updated.toLocaleString(locale(), {
-        month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-      }));
-    }
-    summaryEl.textContent = parts.join(' · ');
-  }
-
-  function listContent() {
-    if (state.status === 'loading') return [h('div', { class: 'placeholder', text: '正在读取书库…' })];
-    if (state.status === 'error') return [h('div', { class: 'placeholder error', text: state.message })];
-    const docs = state.view.documents;
-    if (!docs.length) {
-      return [h('div', { class: 'placeholder', text: '书库里没有 PDF。在 math-reader 里上传 PDF 并完成 R2 同步后会出现在这里。' })];
-    }
-    const query = state.query.trim().toLowerCase();
-    const nodes = docs.map((doc) => docNode(doc, query)).filter(Boolean);
-    if (!nodes.length) {
-      return [h('div', { class: 'placeholder', text: `没有匹配“${state.query.trim()}”的书或章节。` })];
-    }
-    return nodes;
-  }
-
-  function docNode(doc, query) {
-    const chapters = chaptersOf(doc);
-    let shown = chapters;
-    let open = state.expanded.has(doc.id);
-    let autoOpen = false;
-    if (query) {
-      const docHit = [doc.title, doc.author, doc.subject].some((t) => includes(t, query));
-      const hits = (chapters || []).filter((ch) =>
-        includes(ch.title, query) || (ch.topics || []).some((t) => includes(t, query)));
-      if (!docHit && !hits.length) return null;
-      if (!docHit) {
-        shown = hits;
-        autoOpen = true;
-        open = !state.collapsedInSearch.has(doc.id);
-      }
-    }
-    const head = h('button', {
-      class: 'doc-head',
-      type: 'button',
-      'aria-expanded': String(open),
-      onclick: () => toggleDoc(doc, autoOpen),
-    },
-    chevron(),
-    h('div', { class: 'doc-main' },
-      h('div', { class: 'doc-title', text: doc.title || '（无标题）' }),
-      h('div', { class: 'doc-meta', text: docMeta(doc) }),
-      h('div', { class: 'chips' }, docChips(doc))));
-    return h('section', { class: open ? 'doc open' : 'doc' }, head, open ? docBody(doc, shown, autoOpen) : null);
+  function pagesLabel(doc) {
+    const pages = doc.pages;
+    if (!pages) return '书页未同步';
+    return pages.ready >= pages.total ? '书页已同步' : `书页 ${pages.ready}/${pages.total}`;
   }
 
   function docMeta(doc) {
-    return [
-      doc.kind === 'paper' ? '论文' : '书籍',
-      doc.author,
-      doc.totalPages ? `${doc.totalPages} 页` : null,
-      doc.subject,
-    ].filter(Boolean).join(' · ');
-  }
-
-  function docChips(doc) {
-    const chips = [doc.chapterCount ? chip(`大纲 ${doc.chapterCount} 节`) : chip('无大纲')];
-    const pages = doc.pages;
-    if (!pages) chips.push(chip('书页未同步'));
-    else if (pages.ready >= pages.total) chips.push(chip('书页已同步', 'ok'));
-    else chips.push(chip(`书页 ${pages.ready}/${pages.total}`, 'warn'));
-    if (doc.lectureCount) chips.push(chip(`已有讲义 ${doc.lectureCount}`, 'info'));
-    return chips;
-  }
-
-  function docBody(doc, chapters, filtered) {
-    const body = h('div', { class: 'doc-body' });
-    if (chapters === null) {
-      const error = state.outlineErrors.get(doc.id);
-      body.append(h('p', { class: error ? 'note error' : 'note', text: error || '正在读取大纲…' }));
-    } else if (!chapters.length && !filtered) {
-      body.append(h('p', {
-        class: 'note',
-        text: doc.kind === 'paper' ? '没有大纲，可以按页码写讲义。' : '还没有大纲（可在 math-reader 里生成），可以按页码写讲义。',
-      }));
-    } else if (chapters.length) {
-      body.append(h('ol', { class: 'chapters' }, chapters.map((ch) => chapterNode(doc, ch))));
-    }
-    body.append(rangeNode(doc));
-    return body;
-  }
-
-  function chapterNode(doc, ch) {
-    const valid = Number.isInteger(ch.startPage) && Number.isInteger(ch.endPage) &&
-      ch.startPage >= 1 && ch.endPage >= ch.startPage;
-    const through = doc.pages?.through ?? 0;
-    const ready = valid && through >= ch.endPage;
-    const key = `${doc.id}:${ch.index}`;
-    let note = null;
-    if (!valid) note = '大纲里缺少这一节的页码，可以按页码写讲义';
-    else if (!ready) note = doc.pages ? `书页同步到第 ${through} 页` : '书页未同步';
-    const button = h('button', {
-      class: 'btn primary',
-      type: 'button',
-      disabled: !ready || state.sending !== null,
-      onclick: () => requestLecture(doc, `第 ${ch.index + 1} 节“${ch.title}”`, ch.startPage, ch.endPage, key),
-    }, state.sending === key ? '发送中…' : '写讲义');
-    return h('li', { class: 'chapter' },
-      h('span', { class: 'ch-index', text: String(ch.index + 1) }),
-      h('div', { class: 'ch-main' },
-        h('div', { class: 'ch-title' },
-          h('span', { text: ch.title || '（无标题）' }),
-          valid ? h('span', { class: 'ch-pages', text: `第 ${ch.startPage}–${ch.endPage} 页` }) : null),
-        ch.topics?.length ? h('div', { class: 'ch-topics', text: ch.topics.join(' · ') }) : null,
-        ch.hasLecture || note
-          ? h('div', { class: 'ch-flags' },
-            ch.hasLecture ? chip('math-reader 已有讲义', 'info') : null,
-            note ? h('span', { class: 'note', text: note }) : null)
-          : null),
-      h('div', { class: 'ch-action' }, button));
-  }
-
-  function totalPagesOf(doc) {
-    return doc.pages?.total || doc.totalPages || 0;
+    return [doc.author, doc.totalPages ? `${doc.totalPages} 页` : null].filter(Boolean).join(' · ');
   }
 
   function rangeOf(doc) {
@@ -509,10 +405,232 @@
     return range;
   }
 
+  function selectionKey(selection) {
+    if (!selection) return null;
+    return selection.kind === 'chapter' ? 'chapter:' + selection.index : 'range';
+  }
+
+  // 当前选择对应的讲义范围；error 说明为什么还不能写
+  function currentTarget() {
+    const doc = bookById(state.bookId);
+    const selection = state.selection;
+    if (!doc || !selection) return null;
+    let target;
+    if (selection.kind === 'chapter') {
+      const ch = (chaptersOf(doc) || []).find((c) => c.index === selection.index);
+      if (!ch) return null;
+      const part = `第 ${ch.index + 1} 节“${ch.title}”`;
+      if (!validRange(ch.startPage, ch.endPage)) {
+        return { doc, part, display: `《${doc.title}》${part}`, error: '大纲里缺少这一节的页码，可以改用按页码' };
+      }
+      target = {
+        doc, part, start: ch.startPage, end: ch.endPage,
+        display: `《${doc.title}》${part} · 第 ${ch.startPage}–${ch.endPage} 页`,
+      };
+    } else {
+      const range = rangeOf(doc);
+      const start = Number(range.start);
+      const end = Number(range.end);
+      const total = totalPagesOf(doc);
+      if (!validRange(start, end) || (total && end > total)) {
+        return {
+          doc, part: '指定页码范围', display: `《${doc.title}》按页码`,
+          error: total ? `页码应在 1–${total} 之间，起始页不大于结束页` : '起始页不大于结束页',
+        };
+      }
+      target = { doc, part: '指定页码范围', start, end, display: `《${doc.title}》第 ${start}–${end} 页` };
+    }
+    const through = doc.pages?.through ?? 0;
+    if (through < target.end) {
+      target.error = doc.pages ? `书页只同步到第 ${through} 页，同步完再写` : '这本书的书页还没有同步';
+    }
+    return target;
+  }
+
+  // ---------- 渲染 ----------
+
+  function layout() {
+    if (state.displayMode === 'fullscreen') return 'fullscreen';
+    const modes = app?.getHostContext()?.availableDisplayModes;
+    if (state.inlinePicker || (app && !modes?.includes('fullscreen'))) return 'inline-picker';
+    return 'card';
+  }
+
+  function updatePaneLayout() {
+    const single = layout() === 'inline-picker' || window.innerWidth < SINGLE_PANE_WIDTH;
+    els.picker.classList.toggle('single', single);
+    els.picker.classList.toggle('show-chapters', state.showChapters);
+  }
+
+  function render() {
+    const mode = layout();
+    document.documentElement.classList.toggle('fullscreen', mode === 'fullscreen');
+    els.card.hidden = mode !== 'card';
+    els.picker.hidden = mode === 'card';
+    if (mode === 'card') renderCard();
+    else renderPicker();
+  }
+
+  function summaryText() {
+    const docs = state.view.documents;
+    const books = docs.filter((doc) => doc.kind !== 'paper').length;
+    const synced = docs.filter((doc) => doc.pages && doc.pages.ready >= doc.pages.total).length;
+    return `${books} 本书 · ${docs.length - books} 篇论文 · 书页已同步 ${synced} 个`;
+  }
+
+  function renderCard() {
+    const summary = els.cardSummary;
+    summary.classList.toggle('error', state.status === 'error');
+    if (state.status === 'loading') {
+      summary.replaceChildren(h('span', { class: 'sk', style: { width: '60%', margin: '4px 0' } }));
+    } else if (state.status === 'error') {
+      summary.textContent = state.message;
+    } else if (!state.view.documents.length) {
+      summary.textContent = '书库里没有 PDF。在 math-reader 上传 PDF 并完成 R2 同步后会出现在这里。';
+    } else {
+      summary.textContent = summaryText();
+    }
+    els.cardNote.hidden = !state.lastSent;
+    els.cardNote.textContent = state.lastSent ? '已发送写讲义请求：' + state.lastSent : '';
+    els.openPicker.hidden = state.status !== 'ready' || !state.view.documents.length;
+    els.cardRetry.hidden = state.status !== 'error' || !app;
+    els.cardRetry.disabled = state.refreshing;
+  }
+
+  function renderPicker() {
+    updatePaneLayout();
+    els.refresh.disabled = state.refreshing;
+    if (state.status !== 'ready') {
+      els.books.replaceChildren(state.status === 'loading'
+        ? skeleton(5)
+        : h('p', { class: 'empty error', text: state.message }));
+      els.chapters.replaceChildren();
+      renderFooter();
+      return;
+    }
+    const docs = state.view.documents;
+    // 双栏时默认选中第一本，右栏不空着；单栏先列书目
+    if (!state.bookId && docs.length && !els.picker.classList.contains('single')) state.bookId = docs[0].id;
+    const selected = bookById(state.bookId);
+    if (selected && chaptersOf(selected) === null && !state.outlineErrors.has(selected.id)) loadOutline(selected);
+    els.books.replaceChildren(...bookListNodes());
+    els.chapters.replaceChildren(...chapterPaneNodes());
+    renderFooter();
+  }
+
+  function bookListNodes() {
+    const docs = state.view.documents;
+    if (!docs.length) {
+      return [h('p', { class: 'empty', text: '书库里没有 PDF。在 math-reader 上传 PDF 并完成 R2 同步后会出现在这里。' })];
+    }
+    const query = state.query.trim().toLowerCase();
+    const nodes = [];
+    for (const [kind, label] of [['book', '书籍'], ['paper', '论文']]) {
+      const rows = [];
+      for (const doc of docs) {
+        if ((doc.kind === 'paper') !== (kind === 'paper')) continue;
+        let hits = 0;
+        if (query) {
+          const docHit = [doc.title, doc.author, doc.subject].some((t) => includes(t, query));
+          hits = (chaptersOf(doc) || []).filter((ch) => chapterMatches(ch, query)).length;
+          if (!docHit && !hits) continue;
+        }
+        rows.push(bookNode(doc, hits));
+      }
+      if (!rows.length) continue;
+      nodes.push(h('div', { class: 'group', text: `${label} · ${rows.length}` }), ...rows);
+    }
+    if (!nodes.length) {
+      return [h('p', { class: 'empty', text: `没有匹配“${state.query.trim()}”的书或章节` })];
+    }
+    return nodes;
+  }
+
+  function bookNode(doc, hits) {
+    const selected = doc.id === state.bookId;
+    const pages = doc.pages;
+    const pagesTone = !pages ? null : (pages.ready >= pages.total ? 'ok' : 'warn');
+    return h('button', {
+      class: selected ? 'book selected' : 'book',
+      type: 'button',
+      'aria-pressed': String(selected),
+      onclick: () => selectBook(doc.id),
+    },
+    h('span', { class: 'book-title', text: doc.title || '（无标题）' }),
+    docMeta(doc) ? h('span', { class: 'book-meta', text: docMeta(doc) }) : null,
+    h('span', { class: 'chips' },
+      chip(doc.chapterCount ? `大纲 ${doc.chapterCount} 节` : '无大纲'),
+      chip(pagesLabel(doc), pagesTone),
+      doc.lectureCount ? chip(`已有讲义 ${doc.lectureCount}`, 'info') : null,
+      hits ? chip(`${hits} 节匹配`, 'info') : null));
+  }
+
+  function chapterPaneNodes() {
+    const doc = bookById(state.bookId);
+    if (!doc) return [h('p', { class: 'empty', text: '先选一本书' })];
+    const nodes = [
+      h('button', {
+        class: 'back',
+        type: 'button',
+        onclick: () => {
+          state.showChapters = false;
+          updatePaneLayout();
+          renderFooter();
+        },
+      }, '← 全部书目'),
+      h('div', { class: 'pane-head' },
+        h('div', { class: 'pane-title', text: doc.title || '（无标题）' }),
+        h('div', {
+          class: 'book-meta',
+          text: [doc.kind === 'paper' ? '论文' : '书籍', docMeta(doc), pagesLabel(doc)].filter(Boolean).join(' · '),
+        })),
+    ];
+    const chapters = chaptersOf(doc);
+    if (chapters === null) {
+      const error = state.outlineErrors.get(doc.id);
+      nodes.push(error ? h('p', { class: 'empty error', text: error }) : skeleton(4));
+    } else if (!chapters.length) {
+      nodes.push(h('p', {
+        class: 'empty',
+        text: doc.kind === 'paper' ? '没有大纲，可以按页码选范围。' : '还没有大纲（可在 math-reader 里生成），可以按页码选范围。',
+      }));
+    } else {
+      const query = state.query.trim().toLowerCase();
+      nodes.push(h('div', null, chapters.map((ch) => chapterNode(ch, query))));
+    }
+    nodes.push(rangeNode(doc));
+    return nodes;
+  }
+
+  function chapterNode(ch, query) {
+    const key = 'chapter:' + ch.index;
+    const selected = selectionKey(state.selection) === key;
+    const classes = ['chapter'];
+    if (selected) classes.push('selected');
+    if (query && chapterMatches(ch, query)) classes.push('match');
+    return h('button', {
+      class: classes.join(' '),
+      type: 'button',
+      'data-sel': key,
+      'aria-pressed': String(selected),
+      onclick: () => select({ kind: 'chapter', index: ch.index }),
+    },
+    h('span', { class: 'ch-index', text: String(ch.index + 1) }),
+    h('span', { class: 'ch-main' },
+      h('span', { class: 'ch-title', text: ch.title || '（无标题）' }),
+      ch.topics?.length ? h('span', { class: 'ch-topics', text: ch.topics.join(' · ') }) : null),
+    h('span', { class: 'ch-side' },
+      h('span', {
+        class: 'ch-pages',
+        text: validRange(ch.startPage, ch.endPage) ? `第 ${ch.startPage}–${ch.endPage} 页` : '缺少页码',
+      }),
+      ch.hasLecture ? chip('已有讲义', 'info') : null));
+  }
+
   function rangeNode(doc) {
-    const total = totalPagesOf(doc);
     const range = rangeOf(doc);
-    const key = `${doc.id}:range`;
+    const total = totalPagesOf(doc);
+    const selected = selectionKey(state.selection) === 'range';
     const input = (field, label) => h('input', {
       type: 'number',
       min: 1,
@@ -521,41 +639,71 @@
       inputmode: 'numeric',
       value: range[field],
       'aria-label': label,
-      oninput: (event) => { range[field] = event.target.value; },
+      onfocus: () => select({ kind: 'range' }),
+      oninput: (event) => {
+        range[field] = event.target.value;
+        refreshSelection();
+      },
     });
-    return h('div', { class: 'range' },
-      h('span', { text: '按页码：第' }),
-      input('start', '起始页'),
-      h('span', { text: '–' }),
-      input('end', '结束页'),
-      h('span', { text: '页' }),
-      h('button', {
-        class: 'btn',
-        type: 'button',
-        disabled: state.sending !== null,
-        onclick: () => requestRange(doc, range, key),
-      }, state.sending === key ? '发送中…' : '写讲义'));
+    return h('div', {
+      class: selected ? 'range selected' : 'range',
+      'data-sel': 'range',
+      onclick: (event) => {
+        if (event.target.tagName !== 'INPUT') select({ kind: 'range' });
+      },
+    },
+    h('span', { class: 'range-label', text: '按页码' }),
+    h('span', { class: 'range-inputs' }, '第', input('start', '起始页'), '–', input('end', '结束页'), '页'));
+  }
+
+  function renderFooter() {
+    const target = state.status === 'ready' ? currentTarget() : null;
+    const listingBooks = els.picker.classList.contains('single') && !state.showChapters;
+    let text;
+    if (target) text = target.display;
+    else text = state.bookId && !listingBooks ? '选一节，或按页码选范围' : '先选一本书，再选一节';
+    els.selection.replaceChildren(
+      h('span', { class: target ? 'sel-text' : 'sel-text muted', text, title: text }),
+      target?.error ? h('span', { class: 'sel-warn', text: target.error }) : null,
+    );
+    els.write.disabled = !app || !target || !!target.error || state.sending;
+    els.write.textContent = state.sending ? '发送中…' : '写讲义';
+  }
+
+  // 只更新选中状态和底栏，不重建列表（正在输入的页码框保持焦点）
+  function refreshSelection() {
+    const key = selectionKey(state.selection);
+    for (const node of els.chapters.querySelectorAll('[data-sel]')) {
+      const on = node.dataset.sel === key;
+      node.classList.toggle('selected', on);
+      if (node.tagName === 'BUTTON') node.setAttribute('aria-pressed', String(on));
+    }
+    renderFooter();
+    scheduleContextUpdate();
   }
 
   // ---------- 操作 ----------
 
-  function toggleDoc(doc, autoOpen) {
-    if (autoOpen) {
-      if (state.collapsedInSearch.has(doc.id)) state.collapsedInSearch.delete(doc.id);
-      else state.collapsedInSearch.add(doc.id);
-    } else if (state.expanded.has(doc.id)) {
-      state.expanded.delete(doc.id);
-    } else {
-      state.expanded.add(doc.id);
-      if (chaptersOf(doc) === null) loadOutline(doc);
+  function select(selection) {
+    state.selection = selection;
+    refreshSelection();
+  }
+
+  function selectBook(id) {
+    if (state.bookId !== id) {
+      state.bookId = id;
+      state.selection = null;
     }
+    state.showChapters = true;
+    state.outlineErrors.delete(id);
     render();
+    els.chapters.scrollTop = 0;
+    scheduleContextUpdate();
   }
 
   async function loadOutline(doc) {
     if (!app || state.outlineLoading.has(doc.id)) return;
     state.outlineLoading.add(doc.id);
-    state.outlineErrors.delete(doc.id);
     try {
       const result = await app.callServerTool({ name: 'library_outline', arguments: { document_id: doc.id } });
       if (result.isError) throw new Error(resultText(result) || '服务器返回错误');
@@ -568,43 +716,64 @@
     }
   }
 
-  function requestRange(doc, range, key) {
-    const total = totalPagesOf(doc);
-    const start = Number(range.start);
-    const end = Number(range.end);
-    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || (total && end > total)) {
-      toast(total ? `页码应在 1–${total} 之间，起始页不大于结束页` : '起始页不大于结束页');
-      return;
+  async function openPicker() {
+    if (!app) return;
+    try {
+      const result = await app.requestDisplayMode({ mode: 'fullscreen' });
+      state.displayMode = result?.mode || state.displayMode;
+      if (state.displayMode !== 'fullscreen') state.inlinePicker = true;
+    } catch (error) {
+      state.inlinePicker = true;
     }
-    const through = doc.pages?.through ?? 0;
-    if (through < end) {
-      toast(doc.pages ? `书页只同步到第 ${through} 页` : '这本书的书页还没有同步');
-      return;
-    }
-    requestLecture(doc, '指定页码范围', start, end, key);
+    render();
   }
 
-  async function requestLecture(doc, part, start, end, key) {
-    if (!app || state.sending !== null) return;
-    const values = { document: doc.title, id: doc.id, part, start, end };
+  async function requestLecture() {
+    const target = currentTarget();
+    if (!app || !target || target.error || state.sending) return;
+    const values = { document: target.doc.title, id: target.doc.id, part: target.part, start: target.start, end: target.end };
     // 一次替换全部占位符，书名里出现 {{...}} 也不会被再次替换
     const text = LECTURE_TEMPLATE.replace(/\{\{(\w+)\}\}/g, (match, name) =>
       Object.hasOwn(values, name) ? String(values[name]) : match);
-    state.sending = key;
-    render();
+    state.sending = true;
+    renderFooter();
     try {
       const result = await app.sendMessage({ role: 'user', content: [{ type: 'text', text }] });
       if (result?.isError) throw new Error('Claude 没有接收这条消息');
+      state.lastSent = target.display;
       toast('已发送写讲义请求');
-      if (app.getHostContext()?.displayMode === 'fullscreen') {
-        app.requestDisplayMode({ mode: 'inline' }).catch(() => {});
+      if (state.displayMode === 'fullscreen') {
+        try {
+          const back = await app.requestDisplayMode({ mode: 'inline' });
+          state.displayMode = back?.mode || state.displayMode;
+        } catch (error) {
+          // 宿主拒绝切换时留在全屏
+        }
       }
     } catch (error) {
       toast('发送失败：' + (error?.message || error));
     } finally {
-      state.sending = null;
+      state.sending = false;
       render();
     }
+  }
+
+  // 选中的书和节告诉 Claude，之后在对话框里直接说“这一节……”也能对上
+  let contextTimer = null;
+  function scheduleContextUpdate() {
+    clearTimeout(contextTimer);
+    contextTimer = setTimeout(pushModelContext, 400);
+  }
+
+  function pushModelContext() {
+    if (!app?.getHostCapabilities()?.updateModelContext) return;
+    const doc = bookById(state.bookId);
+    if (!doc) return;
+    const target = currentTarget();
+    const text = target?.start
+      ? `用户在 Math Reader 书库界面里选中了《${doc.title}》（id: ${doc.id}）的${target.part}，对应 PDF 第 ${target.start}–${target.end} 页。`
+      : `用户在 Math Reader 书库界面里选中了《${doc.title}》（id: ${doc.id}），还没有选节。`;
+    app.updateModelContext({ content: [{ type: 'text', text }] }).catch(() => {});
   }
 
   function applyResult(result) {
@@ -616,58 +785,41 @@
       state.view = result.structuredContent;
       state.outlines.clear();
       state.outlineErrors.clear();
+      if (state.bookId && !bookById(state.bookId)) {
+        state.bookId = null;
+        state.selection = null;
+        state.showChapters = false;
+      }
     } else {
       state.status = 'error';
       state.message = '工具结果里没有书库数据。';
     }
     render();
-    // 刷新后，已展开且没附带大纲的书重新读取
-    if (state.status === 'ready') {
-      state.view.documents
-        .filter((doc) => state.expanded.has(doc.id) && chaptersOf(doc) === null)
-        .forEach(loadOutline);
-    }
   }
 
   async function refresh() {
-    if (!app) return;
-    refreshEl.disabled = true;
+    if (!app || state.refreshing) return;
+    state.refreshing = true;
+    render();
     try {
       applyResult(await app.callServerTool({ name: 'show_library', arguments: {} }));
     } catch (error) {
       toast('刷新失败：' + (error?.message || error));
     } finally {
-      refreshEl.disabled = false;
+      state.refreshing = false;
+      render();
     }
   }
 
-  async function toggleFullscreen() {
-    if (!app) return;
-    const mode = app.getHostContext()?.displayMode === 'fullscreen' ? 'inline' : 'fullscreen';
-    try {
-      await app.requestDisplayMode({ mode });
-    } catch (error) {
-      toast('无法切换显示方式：' + (error?.message || error));
-    }
-    applyContext();
-  }
-
-  function applyContext() {
+  // 主题、字体、安全区；不重建列表
+  function applyHostStyles() {
     const ctx = app?.getHostContext() || {};
     if (ctx.theme) sdk.applyDocumentTheme(ctx.theme);
     if (ctx.styles?.variables) sdk.applyHostStyleVariables(ctx.styles.variables);
     if (ctx.styles?.css?.fonts) sdk.applyHostFonts(ctx.styles.css.fonts);
-    const fullscreen = ctx.displayMode === 'fullscreen';
-    document.documentElement.classList.toggle('fullscreen', fullscreen);
     const inset = ctx.safeAreaInsets;
-    rootEl.style.padding = fullscreen && inset
-      ? `${inset.top}px ${inset.right}px ${inset.bottom}px ${inset.left}px`
-      : '';
-    const maxHeight = ctx.containerDimensions?.maxHeight;
-    rootEl.style.setProperty('--view-max-height',
-      (maxHeight ? Math.min(maxHeight, INLINE_MAX_HEIGHT) : INLINE_MAX_HEIGHT) + 'px');
-    fullscreenEl.hidden = !ctx.availableDisplayModes?.includes('fullscreen');
-    fullscreenEl.textContent = fullscreen ? '退出全屏' : '全屏';
+    els.root.style.padding = inset ? `${inset.top}px ${inset.right}px ${inset.bottom}px ${inset.left}px` : '';
+    document.documentElement.style.setProperty('--mr-safe-bottom', (inset?.bottom || 0) + 'px');
   }
 
   function fail(message) {
@@ -676,13 +828,19 @@
     render();
   }
 
-  searchEl.addEventListener('input', () => {
-    state.query = searchEl.value;
-    state.collapsedInSearch.clear();
-    render();
+  els.openPicker.addEventListener('click', openPicker);
+  els.cardRetry.addEventListener('click', refresh);
+  els.refresh.addEventListener('click', refresh);
+  els.write.addEventListener('click', requestLecture);
+  els.search.addEventListener('input', () => {
+    state.query = els.search.value;
+    if (layout() !== 'card') renderPicker();
   });
-  refreshEl.addEventListener('click', refresh);
-  fullscreenEl.addEventListener('click', toggleFullscreen);
+  // 只切换单栏/双栏的样式，不重建列表：手机弹出键盘也会触发 resize，重建会让页码框失去焦点
+  window.addEventListener('resize', () => {
+    updatePaneLayout();
+    if (!els.picker.hidden) renderFooter();
+  });
 
   async function main() {
     render();
@@ -693,7 +851,7 @@
       return;
     }
     app = new sdk.App(
-      { name: 'math-reader-library', version: '1.0.0' },
+      { name: 'math-reader-library', version: '1.1.0' },
       { availableDisplayModes: ['inline', 'fullscreen'] },
     );
     // 处理函数在 connect 之前设置，避免错过宿主随后发来的工具结果
@@ -701,14 +859,22 @@
     app.ontoolcancelled = () => {
       if (state.status === 'loading') fail('工具调用已取消。');
     };
-    app.onhostcontextchanged = applyContext;
+    app.onhostcontextchanged = (changed) => {
+      applyHostStyles();
+      if (changed?.displayMode && changed.displayMode !== state.displayMode) {
+        state.displayMode = changed.displayMode;
+        render();
+      }
+    };
     try {
       await app.connect();
     } catch (error) {
       fail('无法连接 Claude：' + (error?.message || error));
       return;
     }
-    applyContext();
+    state.displayMode = app.getHostContext()?.displayMode || 'inline';
+    applyHostStyles();
+    render();
   }
 
   main();
