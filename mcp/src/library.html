@@ -18,7 +18,6 @@
     --mr-bg-2: var(--color-background-secondary, light-dark(#f5f4ed, #262624));
     --mr-inverse-bg: var(--color-background-inverse, light-dark(#141413, #faf9f5));
     --mr-inverse-text: var(--color-text-inverse, light-dark(#ffffff, #141413));
-    --mr-border: var(--color-border-tertiary, light-dark(rgba(31, 30, 29, 0.15), rgba(222, 220, 209, 0.15)));
     --mr-border-2: var(--color-border-secondary, light-dark(rgba(31, 30, 29, 0.3), rgba(222, 220, 209, 0.3)));
     --mr-ring: var(--color-ring-primary, light-dark(rgba(20, 20, 19, 0.7), rgba(250, 249, 245, 0.7)));
     --mr-ok-bg: var(--color-background-success, light-dark(#e9f1dc, #1b4614));
@@ -839,7 +838,10 @@
   // 只切换单栏/双栏的样式，不重建列表：手机弹出键盘也会触发 resize，重建会让页码框失去焦点
   window.addEventListener('resize', () => {
     updatePaneLayout();
-    if (!els.picker.hidden) renderFooter();
+    if (els.picker.hidden) return;
+    // 单栏变双栏且还没选书时，重建一次以默认选中第一本（此时没有页码框，不会丢焦点）
+    if (!els.picker.classList.contains('single') && !state.bookId) renderPicker();
+    else renderFooter();
   });
 
   async function main() {

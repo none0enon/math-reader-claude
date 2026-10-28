@@ -93,10 +93,10 @@ function createServer(env: Env): McpServer {
     return { content: [{ type: 'text', text }], structuredContent: view };
   }));
 
-  // 只供书库界面调用（visibility: app）：结果里没附带大纲的书，展开时读取
+  // 只供书库界面调用（visibility: app）：结果里没附带大纲的书，在界面里选中时读取
   registerAppTool(server, 'library_outline', {
     title: '书库界面：读取大纲',
-    description: '供 show_library 界面展开一本书时读取它的大纲数据。',
+    description: '供 show_library 界面选中一本书时读取它的大纲数据。',
     inputSchema: { document_id: z.string().describe('书的 id') },
     annotations: READ_ONLY,
     _meta: { ui: { visibility: ['app'] } },

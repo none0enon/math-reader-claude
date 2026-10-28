@@ -14,7 +14,7 @@ export const LIBRARY_UI_META = {
   ui: { csp: { resourceDomains: ['https://unpkg.com', 'https://assets.claude.ai'] }, prefersBorder: false },
 };
 
-// 随结果附带的大纲总量上限（字符）；超出部分的书在界面展开时用 library_outline 读取
+// 随结果附带的大纲总量上限（字符）；超出部分的书在界面里选中时用 library_outline 读取
 const OUTLINE_INLINE_CHARS = 60_000;
 
 export type PagesView = { ready: number; total: number; through: number };
