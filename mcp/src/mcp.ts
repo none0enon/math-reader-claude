@@ -212,6 +212,14 @@ function createServer(env: Env): McpServer {
     return textResult(`《${doc.title}》${chapter.title}\n\n${body}`);
   }));
 
+  // claude.ai 的“+ → 连接器”菜单只列提示模板，书库界面从这里也能打开
+  server.registerPrompt('open_library', {
+    title: '打开书库',
+    description: '在对话里显示 Math Reader 书库界面：书目和大纲，点某一节的“写讲义”即可开始。',
+  }, () => ({
+    messages: [{ role: 'user', content: { type: 'text', text: '打开 Math Reader 书库（调用 show_library）。' } }],
+  }));
+
   server.registerPrompt('write_lecture', {
     title: '写可视化讲义',
     description: '读取一节的书页，按 math-reader 的讲义结构写讲义，并用 Claude 的内置可视化配图。',
