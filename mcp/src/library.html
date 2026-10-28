@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Math Reader 书库</title>
+<!-- MCP Apps 客户端库：版本固定，integrity 为 npm 包内同一文件的 SHA-384 -->
+<link rel="modulepreload" href="https://unpkg.com/@modelcontextprotocol/ext-apps@1.7.5/dist/src/app-with-deps.js"
+      integrity="sha384-wSTuCTWt2+bD7kgcVHbiUFIEDVUNFUZjWmT/T0NTP1RTg45gZJ4zVNOYLvujAZ/I" crossorigin="anonymous">
+<style>
+  /* 宿主（Claude）提供主题变量时以内联样式覆盖这里的默认值 */
+  :root {
+    color-scheme: light dark;
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f5f3;
+    --color-background-tertiary: #ebebe8;
+    --color-background-inverse: #1f1f1e;
+    --color-background-success: #e7f2e4;
+    --color-background-warning: #fbf0db;
+    --color-background-info: #e5eef9;
+    --color-text-primary: #1f1f1e;
+    --color-text-secondary: #5e5d59;
+    --color-text-tertiary: #8a8985;
+    --color-text-inverse: #ffffff;
+    --color-text-success: #2e6b2c;
+    --color-text-warning: #855600;
+    --color-text-info: #1f5ea6;
+    --color-text-danger: #b3261e;
+    --color-border-secondary: rgba(31, 31, 30, 0.2);
+    --color-border-tertiary: rgba(31, 31, 30, 0.1);
+    --color-ring-primary: #2f6fd6;
+  }
+  :root[data-theme="dark"] {
+    --color-background-primary: #262624;
+    --color-background-secondary: #30302e;
+    --color-background-tertiary: #3a3a37;
+    --color-background-inverse: #f5f4ef;
+    --color-background-success: rgba(98, 170, 92, 0.2);
+    --color-background-warning: rgba(214, 158, 46, 0.2);
+    --color-background-info: rgba(92, 145, 220, 0.2);
+    --color-text-primary: #f5f4ef;
+    --color-text-secondary: #c2c0b6;
+    --color-text-tertiary: #9a9893;
+    --color-text-inverse: #1f1f1e;
+    --color-text-success: #9bd396;
+    --color-text-warning: #efc56c;
+    --color-text-info: #9cc2f2;
+    --color-text-danger: #f2978f;
+    --color-border-secondary: rgba(245, 244, 239, 0.2);
+    --color-border-tertiary: rgba(245, 244, 239, 0.1);
+    --color-ring-primary: #7aa7ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --color-background-primary: #262624;
+      --color-background-secondary: #30302e;
+      --color-background-tertiary: #3a3a37;
+      --color-background-inverse: #f5f4ef;
+      --color-background-success: rgba(98, 170, 92, 0.2);
+      --color-background-warning: rgba(214, 158, 46, 0.2);
+      --color-background-info: rgba(92, 145, 220, 0.2);
+      --color-text-primary: #f5f4ef;
+      --color-text-secondary: #c2c0b6;
+      --color-text-tertiary: #9a9893;
+      --color-text-inverse: #1f1f1e;
+      --color-text-success: #9bd396;
+      --color-text-warning: #efc56c;
+      --color-text-info: #9cc2f2;
+      --color-text-danger: #f2978f;
+      --color-border-secondary: rgba(245, 244, 239, 0.2);
+      --color-border-tertiary: rgba(245, 244, 239, 0.1);
+      --color-ring-primary: #7aa7ee;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif);
+    font-size: var(--font-text-sm-size, 14px);
+    line-height: var(--font-text-sm-line-height, 1.5);
+    color: var(--color-text-primary);
+    background: var(--color-background-primary);
+    -webkit-text-size-adjust: 100%;
+  }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--color-ring-primary); outline-offset: 1px; }
+  [hidden] { display: none !important; }
+
+  #root { display: flex; flex-direction: column; max-height: var(--view-max-height, 640px); }
+  html.fullscreen #root { height: 100vh; max-height: none; }
+
+  header {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--color-border-tertiary);
+  }
+  .titlebar { display: flex; align-items: center; gap: 8px; }
+  .titlebar h1 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--font-heading-sm-size, 16px);
+    line-height: var(--font-heading-sm-line-height, 1.4);
+    font-weight: var(--font-weight-semibold, 600);
+  }
+  .summary { color: var(--color-text-secondary); font-size: var(--font-text-xs-size, 12px); }
+  .search {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md, 8px);
+    background: var(--color-background-primary);
+  }
+  .search::placeholder { color: var(--color-text-tertiary); }
+
+  #list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .placeholder { padding: 28px 16px; text-align: center; color: var(--color-text-secondary); }
+  .error { color: var(--color-text-danger); }
+
+  .doc { border-bottom: 1px solid var(--color-border-tertiary); }
+  .doc:last-child { border-bottom: 0; }
+  .doc-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    border: 0;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+  }
+  .doc-head:hover { background: var(--color-background-secondary); }
+  .chev { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--color-text-tertiary); transition: transform 0.15s; }
+  .doc.open .chev { transform: rotate(90deg); }
+  .doc-main { flex: 1; min-width: 0; }
+  .doc-title { font-weight: var(--font-weight-semibold, 600); overflow-wrap: anywhere; }
+  .doc-meta { color: var(--color-text-secondary); font-size: var(--font-text-xs-size, 12px); overflow-wrap: anywhere; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .chip {
+    display: inline-block;
+    padding: 0 8px;
+    border-radius: var(--border-radius-full, 999px);
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    font-size: var(--font-text-xs-size, 12px);
+    line-height: 20px;
+    white-space: nowrap;
+  }
+  .chip.ok { background: var(--color-background-success); color: var(--color-text-success); }
+  .chip.warn { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .chip.info { background: var(--color-background-info); color: var(--color-text-info); }
+
+  .doc-body { padding: 0 16px 12px 42px; }
+  .note { margin: 0; color: var(--color-text-tertiary); font-size: var(--font-text-xs-size, 12px); }
+  .doc-body > .note { padding: 4px 0 8px; }
+  .chapters { list-style: none; margin: 0; padding: 0; }
+  .chapter { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--color-border-tertiary); }
+  .chapter:first-child { border-top: 0; }
+  .ch-index {
+    flex: none;
+    min-width: 1.8em;
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .ch-main { flex: 1; min-width: 0; }
+  .ch-title { font-weight: var(--font-weight-medium, 500); overflow-wrap: anywhere; }
+  .ch-pages { margin-left: 8px; color: var(--color-text-secondary); font-size: var(--font-text-xs-size, 12px); font-weight: normal; white-space: nowrap; }
+  .ch-topics {
+    color: var(--color-text-tertiary);
+    font-size: var(--font-text-xs-size, 12px);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ch-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+  .ch-action { flex: none; }
+
+  .btn {
+    padding: 4px 12px;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md, 8px);
+    background: var(--color-background-primary);
+    font-size: var(--font-text-xs-size, 12px);
+    line-height: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .btn:hover:not(:disabled) { background: var(--color-background-secondary); }
+  .btn.primary { border-color: transparent; background: var(--color-background-inverse); color: var(--color-text-inverse); }
+  .btn.primary:hover:not(:disabled) { opacity: 0.88; background: var(--color-background-inverse); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  .range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--color-border-secondary);
+    color: var(--color-text-secondary);
+    font-size: var(--font-text-xs-size, 12px);
+  }
+  .range input {
+    width: 4.5em;
+    padding: 3px 6px;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-sm, 6px);
+    background: var(--color-background-primary);
+    text-align: center;
+  }
+
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    padding: 6px 14px;
+    border-radius: var(--border-radius-md, 8px);
+    background: var(--color-background-inverse);
+    color: var(--color-text-inverse);
+    font-size: var(--font-text-xs-size, 12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 440px) {
+    .doc-body { padding-left: 16px; }
+    .chapter { flex-wrap: wrap; }
+    .ch-action { width: 100%; padding-left: calc(1.8em + 10px); }
+  }
+  @media (pointer: coarse) {
+    .btn { padding: 6px 14px; }
+    .doc-head { padding-top: 12px; padding-bottom: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chev, #toast { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <header>
+    <div class="titlebar">
+      <h1>Math Reader 书库</h1>
+      <button class="btn" id="refresh" type="button">刷新</button>
+      <button class="btn" id="fullscreen" type="button" hidden>全屏</button>
+    </div>
+    <div class="summary" id="summary"></div>
+    <input class="search" id="search" type="search" placeholder="搜索书名、作者或章节" aria-label="搜索书名、作者或章节" autocomplete="off">
+  </header>
+  <div id="list"></div>
+</div>
+<div id="toast" role="status"></div>
+
+<script type="module">
+  const SDK_URL = 'https://unpkg.com/@modelcontextprotocol/ext-apps@1.7.5/dist/src/app-with-deps.js';
+  // 写讲义请求的模板，由服务器在下发界面时填入；{{document}} {{id}} {{part}} {{start}} {{end}} 由界面替换
+  const LECTURE_TEMPLATE = /*LECTURE_TEMPLATE*/"";
+  // 内嵌在对话里时的最大高度，更长的列表在框内滚动；全屏时铺满
+  const INLINE_MAX_HEIGHT = 640;
+
+  const rootEl = document.getElementById('root');
+  const listEl = document.getElementById('list');
+  const summaryEl = document.getElementById('summary');
+  const searchEl = document.getElementById('search');
+  const refreshEl = document.getElementById('refresh');
+  const fullscreenEl = document.getElementById('fullscreen');
+  const toastEl = document.getElementById('toast');
+
+  const state = {
+    status: 'loading', // loading | ready | error
+    message: '',
+    view: null, // { updatedAt, documents }
+    query: '',
+    expanded: new Set(),
+    // 搜索命中章节时自动展开的书里，用户手动收起的
+    collapsedInSearch: new Set(),
+    // 结果里没附带大纲的书，展开时读取
+    outlines: new Map(),
+    outlineLoading: new Set(),
+    outlineErrors: new Map(),
+    ranges: new Map(),
+    sending: null,
+  };
+
+  let sdk = null;
+  let app = null;
+
+  function h(tag, props, ...children) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(props || {})) {
+      if (value === undefined || value === null || value === false) continue;
+      if (key === 'class') node.className = value;
+      else if (key === 'text') node.textContent = value;
+      else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+      else node.setAttribute(key, value === true ? '' : String(value));
+    }
+    for (const child of children.flat()) {
+      if (child === undefined || child === null || child === false) continue;
+      node.append(child);
+    }
+    return node;
+  }
+
+  function chip(text, tone) {
+    return h('span', { class: tone ? 'chip ' + tone : 'chip', text });
+  }
+
+  function chevron() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'chev');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M6 3.5 10.5 8 6 12.5');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.6');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.append(path);
+    return svg;
+  }
+
+  let toastTimer = null;
+  function toast(text) {
+    toastEl.textContent = text;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+  }
+
+  function resultText(result) {
+    return (result?.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
+  }
+
+  function includes(text, query) {
+    return typeof text === 'string' && text.toLowerCase().includes(query);
+  }
+
+  function chaptersOf(doc) {
+    return doc.chapters ?? state.outlines.get(doc.id) ?? null;
+  }
+
+  function locale() {
+    return app?.getHostContext()?.locale || undefined;
+  }
+
+  // ---------- 渲染 ----------
+
+  function render() {
+    renderSummary();
+    listEl.replaceChildren(...listContent());
+  }
+
+  function renderSummary() {
+    if (state.status !== 'ready') {
+      summaryEl.textContent = '';
+      return;
+    }
+    const docs = state.view.documents;
+    const books = docs.filter((d) => d.kind !== 'paper').length;
+    const parts = [`${books} 本书`, `${docs.length - books} 篇论文`];
+    const updated = state.view.updatedAt ? new Date(state.view.updatedAt) : null;
+    if (updated && !Number.isNaN(updated.getTime())) {
+      parts.push('书库更新于 ' + updated.toLocaleString(locale(), {
+        month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+      }));
+    }
+    summaryEl.textContent = parts.join(' · ');
+  }
+
+  function listContent() {
+    if (state.status === 'loading') return [h('div', { class: 'placeholder', text: '正在读取书库…' })];
+    if (state.status === 'error') return [h('div', { class: 'placeholder error', text: state.message })];
+    const docs = state.view.documents;
+    if (!docs.length) {
+      return [h('div', { class: 'placeholder', text: '书库里没有 PDF。在 math-reader 里上传 PDF 并完成 R2 同步后会出现在这里。' })];
+    }
+    const query = state.query.trim().toLowerCase();
+    const nodes = docs.map((doc) => docNode(doc, query)).filter(Boolean);
+    if (!nodes.length) {
+      return [h('div', { class: 'placeholder', text: `没有匹配“${state.query.trim()}”的书或章节。` })];
+    }
+    return nodes;
+  }
+
+  function docNode(doc, query) {
+    const chapters = chaptersOf(doc);
+    let shown = chapters;
+    let open = state.expanded.has(doc.id);
+    let autoOpen = false;
+    if (query) {
+      const docHit = [doc.title, doc.author, doc.subject].some((t) => includes(t, query));
+      const hits = (chapters || []).filter((ch) =>
+        includes(ch.title, query) || (ch.topics || []).some((t) => includes(t, query)));
+      if (!docHit && !hits.length) return null;
+      if (!docHit) {
+        shown = hits;
+        autoOpen = true;
+        open = !state.collapsedInSearch.has(doc.id);
+      }
+    }
+    const head = h('button', {
+      class: 'doc-head',
+      type: 'button',
+      'aria-expanded': String(open),
+      onclick: () => toggleDoc(doc, autoOpen),
+    },
+    chevron(),
+    h('div', { class: 'doc-main' },
+      h('div', { class: 'doc-title', text: doc.title || '（无标题）' }),
+      h('div', { class: 'doc-meta', text: docMeta(doc) }),
+      h('div', { class: 'chips' }, docChips(doc))));
+    return h('section', { class: open ? 'doc open' : 'doc' }, head, open ? docBody(doc, shown, autoOpen) : null);
+  }
+
+  function docMeta(doc) {
+    return [
+      doc.kind === 'paper' ? '论文' : '书籍',
+      doc.author,
+      doc.totalPages ? `${doc.totalPages} 页` : null,
+      doc.subject,
+    ].filter(Boolean).join(' · ');
+  }
+
+  function docChips(doc) {
+    const chips = [doc.chapterCount ? chip(`大纲 ${doc.chapterCount} 节`) : chip('无大纲')];
+    const pages = doc.pages;
+    if (!pages) chips.push(chip('书页未同步'));
+    else if (pages.ready >= pages.total) chips.push(chip('书页已同步', 'ok'));
+    else chips.push(chip(`书页 ${pages.ready}/${pages.total}`, 'warn'));
+    if (doc.lectureCount) chips.push(chip(`已有讲义 ${doc.lectureCount}`, 'info'));
+    return chips;
+  }
+
+  function docBody(doc, chapters, filtered) {
+    const body = h('div', { class: 'doc-body' });
+    if (chapters === null) {
+      const error = state.outlineErrors.get(doc.id);
+      body.append(h('p', { class: error ? 'note error' : 'note', text: error || '正在读取大纲…' }));
+    } else if (!chapters.length && !filtered) {
+      body.append(h('p', {
+        class: 'note',
+        text: doc.kind === 'paper' ? '没有大纲，可以按页码写讲义。' : '还没有大纲（可在 math-reader 里生成），可以按页码写讲义。',
+      }));
+    } else if (chapters.length) {
+      body.append(h('ol', { class: 'chapters' }, chapters.map((ch) => chapterNode(doc, ch))));
+    }
+    body.append(rangeNode(doc));
+    return body;
+  }
+
+  function chapterNode(doc, ch) {
+    const valid = Number.isInteger(ch.startPage) && Number.isInteger(ch.endPage) &&
+      ch.startPage >= 1 && ch.endPage >= ch.startPage;
+    const through = doc.pages?.through ?? 0;
+    const ready = valid && through >= ch.endPage;
+    const key = `${doc.id}:${ch.index}`;
+    let note = null;
+    if (!valid) note = '大纲里缺少这一节的页码，可以按页码写讲义';
+    else if (!ready) note = doc.pages ? `书页同步到第 ${through} 页` : '书页未同步';
+    const button = h('button', {
+      class: 'btn primary',
+      type: 'button',
+      disabled: !ready || state.sending !== null,
+      onclick: () => requestLecture(doc, `第 ${ch.index + 1} 节“${ch.title}”`, ch.startPage, ch.endPage, key),
+    }, state.sending === key ? '发送中…' : '写讲义');
+    return h('li', { class: 'chapter' },
+      h('span', { class: 'ch-index', text: String(ch.index + 1) }),
+      h('div', { class: 'ch-main' },
+        h('div', { class: 'ch-title' },
+          h('span', { text: ch.title || '（无标题）' }),
+          valid ? h('span', { class: 'ch-pages', text: `第 ${ch.startPage}–${ch.endPage} 页` }) : null),
+        ch.topics?.length ? h('div', { class: 'ch-topics', text: ch.topics.join(' · ') }) : null,
+        ch.hasLecture || note
+          ? h('div', { class: 'ch-flags' },
+            ch.hasLecture ? chip('math-reader 已有讲义', 'info') : null,
+            note ? h('span', { class: 'note', text: note }) : null)
+          : null),
+      h('div', { class: 'ch-action' }, button));
+  }
+
+  function totalPagesOf(doc) {
+    return doc.pages?.total || doc.totalPages || 0;
+  }
+
+  function rangeOf(doc) {
+    let range = state.ranges.get(doc.id);
+    if (!range) {
+      const total = totalPagesOf(doc);
+      // 论文默认整篇；书默认前 20 页
+      const end = total ? (doc.kind === 'paper' ? total : Math.min(total, 20)) : 1;
+      range = { start: '1', end: String(end) };
+      state.ranges.set(doc.id, range);
+    }
+    return range;
+  }
+
+  function rangeNode(doc) {
+    const total = totalPagesOf(doc);
+    const range = rangeOf(doc);
+    const key = `${doc.id}:range`;
+    const input = (field, label) => h('input', {
+      type: 'number',
+      min: 1,
+      max: total || undefined,
+      step: 1,
+      inputmode: 'numeric',
+      value: range[field],
+      'aria-label': label,
+      oninput: (event) => { range[field] = event.target.value; },
+    });
+    return h('div', { class: 'range' },
+      h('span', { text: '按页码：第' }),
+      input('start', '起始页'),
+      h('span', { text: '–' }),
+      input('end', '结束页'),
+      h('span', { text: '页' }),
+      h('button', {
+        class: 'btn',
+        type: 'button',
+        disabled: state.sending !== null,
+        onclick: () => requestRange(doc, range, key),
+      }, state.sending === key ? '发送中…' : '写讲义'));
+  }
+
+  // ---------- 操作 ----------
+
+  function toggleDoc(doc, autoOpen) {
+    if (autoOpen) {
+      if (state.collapsedInSearch.has(doc.id)) state.collapsedInSearch.delete(doc.id);
+      else state.collapsedInSearch.add(doc.id);
+    } else if (state.expanded.has(doc.id)) {
+      state.expanded.delete(doc.id);
+    } else {
+      state.expanded.add(doc.id);
+      if (chaptersOf(doc) === null) loadOutline(doc);
+    }
+    render();
+  }
+
+  async function loadOutline(doc) {
+    if (!app || state.outlineLoading.has(doc.id)) return;
+    state.outlineLoading.add(doc.id);
+    state.outlineErrors.delete(doc.id);
+    try {
+      const result = await app.callServerTool({ name: 'library_outline', arguments: { document_id: doc.id } });
+      if (result.isError) throw new Error(resultText(result) || '服务器返回错误');
+      state.outlines.set(doc.id, Array.isArray(result.structuredContent?.chapters) ? result.structuredContent.chapters : []);
+    } catch (error) {
+      state.outlineErrors.set(doc.id, '读取大纲失败：' + (error?.message || error));
+    } finally {
+      state.outlineLoading.delete(doc.id);
+      render();
+    }
+  }
+
+  function requestRange(doc, range, key) {
+    const total = totalPagesOf(doc);
+    const start = Number(range.start);
+    const end = Number(range.end);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || (total && end > total)) {
+      toast(total ? `页码应在 1–${total} 之间，起始页不大于结束页` : '起始页不大于结束页');
+      return;
+    }
+    const through = doc.pages?.through ?? 0;
+    if (through < end) {
+      toast(doc.pages ? `书页只同步到第 ${through} 页` : '这本书的书页还没有同步');
+      return;
+    }
+    requestLecture(doc, '指定页码范围', start, end, key);
+  }
+
+  async function requestLecture(doc, part, start, end, key) {
+    if (!app || state.sending !== null) return;
+    const values = { document: doc.title, id: doc.id, part, start, end };
+    // 一次替换全部占位符，书名里出现 {{...}} 也不会被再次替换
+    const text = LECTURE_TEMPLATE.replace(/\{\{(\w+)\}\}/g, (match, name) =>
+      Object.hasOwn(values, name) ? String(values[name]) : match);
+    state.sending = key;
+    render();
+    try {
+      const result = await app.sendMessage({ role: 'user', content: [{ type: 'text', text }] });
+      if (result?.isError) throw new Error('Claude 没有接收这条消息');
+      toast('已发送写讲义请求');
+      if (app.getHostContext()?.displayMode === 'fullscreen') {
+        app.requestDisplayMode({ mode: 'inline' }).catch(() => {});
+      }
+    } catch (error) {
+      toast('发送失败：' + (error?.message || error));
+    } finally {
+      state.sending = null;
+      render();
+    }
+  }
+
+  function applyResult(result) {
+    if (result?.isError) {
+      state.status = 'error';
+      state.message = resultText(result) || '读取书库失败。';
+    } else if (Array.isArray(result?.structuredContent?.documents)) {
+      state.status = 'ready';
+      state.view = result.structuredContent;
+      state.outlines.clear();
+      state.outlineErrors.clear();
+    } else {
+      state.status = 'error';
+      state.message = '工具结果里没有书库数据。';
+    }
+    render();
+    // 刷新后，已展开且没附带大纲的书重新读取
+    if (state.status === 'ready') {
+      state.view.documents
+        .filter((doc) => state.expanded.has(doc.id) && chaptersOf(doc) === null)
+        .forEach(loadOutline);
+    }
+  }
+
+  async function refresh() {
+    if (!app) return;
+    refreshEl.disabled = true;
+    try {
+      applyResult(await app.callServerTool({ name: 'show_library', arguments: {} }));
+    } catch (error) {
+      toast('刷新失败：' + (error?.message || error));
+    } finally {
+      refreshEl.disabled = false;
+    }
+  }
+
+  async function toggleFullscreen() {
+    if (!app) return;
+    const mode = app.getHostContext()?.displayMode === 'fullscreen' ? 'inline' : 'fullscreen';
+    try {
+      await app.requestDisplayMode({ mode });
+    } catch (error) {
+      toast('无法切换显示方式：' + (error?.message || error));
+    }
+    applyContext();
+  }
+
+  function applyContext() {
+    const ctx = app?.getHostContext() || {};
+    if (ctx.theme) sdk.applyDocumentTheme(ctx.theme);
+    if (ctx.styles?.variables) sdk.applyHostStyleVariables(ctx.styles.variables);
+    if (ctx.styles?.css?.fonts) sdk.applyHostFonts(ctx.styles.css.fonts);
+    const fullscreen = ctx.displayMode === 'fullscreen';
+    document.documentElement.classList.toggle('fullscreen', fullscreen);
+    const inset = ctx.safeAreaInsets;
+    rootEl.style.padding = fullscreen && inset
+      ? `${inset.top}px ${inset.right}px ${inset.bottom}px ${inset.left}px`
+      : '';
+    const maxHeight = ctx.containerDimensions?.maxHeight;
+    rootEl.style.setProperty('--view-max-height',
+      (maxHeight ? Math.min(maxHeight, INLINE_MAX_HEIGHT) : INLINE_MAX_HEIGHT) + 'px');
+    fullscreenEl.hidden = !ctx.availableDisplayModes?.includes('fullscreen');
+    fullscreenEl.textContent = fullscreen ? '退出全屏' : '全屏';
+  }
+
+  function fail(message) {
+    state.status = 'error';
+    state.message = message;
+    render();
+  }
+
+  searchEl.addEventListener('input', () => {
+    state.query = searchEl.value;
+    state.collapsedInSearch.clear();
+    render();
+  });
+  refreshEl.addEventListener('click', refresh);
+  fullscreenEl.addEventListener('click', toggleFullscreen);
+
+  async function main() {
+    render();
+    try {
+      sdk = await import(SDK_URL);
+    } catch (error) {
+      fail('界面组件加载失败（需要能访问 unpkg.com）：' + (error?.message || error));
+      return;
+    }
+    app = new sdk.App(
+      { name: 'math-reader-library', version: '1.0.0' },
+      { availableDisplayModes: ['inline', 'fullscreen'] },
+    );
+    // 处理函数在 connect 之前设置，避免错过宿主随后发来的工具结果
+    app.ontoolresult = applyResult;
+    app.ontoolcancelled = () => {
+      if (state.status === 'loading') fail('工具调用已取消。');
+    };
+    app.onhostcontextchanged = applyContext;
+    try {
+      await app.connect();
+    } catch (error) {
+      fail('无法连接 Claude：' + (error?.message || error));
+      return;
+    }
+    applyContext();
+  }
+
+  main();
+</script>
+</body>
+</html>

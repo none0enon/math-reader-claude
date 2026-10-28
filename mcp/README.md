@@ -5,8 +5,9 @@
 ## 工作方式
 
 - math-reader 把连接器需要的数据写到你的 Cloudflare R2（与 R2 云同步用同一个存储桶）：
-  - `claude/index.json`：书目、大纲、讲义编号。每次 R2 同步后自动上传，内容没变时跳过。
+  - `claude/index.json`：书目、大纲、讲义编号、书页同步进度。每次 R2 同步后自动上传，内容没变时跳过。
   - `claude/docs/<书 id>/`：书页图片和清单。在书架长按书籍，选择“同步书页给 Claude”生成，中断后再次执行会从断点继续。
+  - **设置 → 数据管理 → 自动同步到 Claude**（开关只存在本机）：打开后，新上传的 PDF 在后台逐本同步书页；生成大纲后立即上传书目索引，书页没同步完的接着同步；应用重启后续传没完成的。打开开关时会询问是否把书库里已有、还没同步的 PDF 一并同步。关掉开关，正在同步的书在当前页完成后停下。
 - 本目录是部署在 Cloudflare Workers 上的 MCP 服务，读取同一个存储桶，用 OAuth + 你设的密码保护。
 - claude.ai 的单次工具结果约 15 万字符封顶，base64 图片也计入。所以每张书页图片不超过 12 万字符（超出时降低 JPEG 质量，仍超出就上下切成两张），`read_pages` 每次按大小挑页（通常 1–2 页，最多 8 页），结果末尾写明下一次从哪一页继续；Claude 可以在同一轮里并行读取多页。
 
@@ -14,11 +15,14 @@
 
 | 名称 | 作用 |
 |---|---|
+| `show_library` | 在对话里显示可交互的书库界面：书目、大纲（节标题、页码、主题）、书页同步进度、math-reader 已有讲义；可搜索，点某一节的“写讲义”或按页码范围发出写讲义请求 |
 | `list_documents` | 列出书籍和论文：id、页数、大纲节数、书页同步进度 |
 | `get_outline` | 一本书的大纲：每节标题、主题、PDF 页码范围，以及是否已有 math-reader 讲义 |
 | `read_pages` | 以图片返回书页（PDF 物理页码） |
 | `read_lecture` | 读取 math-reader 此前生成的讲义正文 |
 | `write_lecture`（提示模板） | 读完一节后按 math-reader 的讲义结构（预习、大纲、习题）写讲义，并用内置可视化配图 |
+
+`show_library` 的界面用 MCP Apps（`@modelcontextprotocol/ext-apps`）实现，在 claude.ai 网页版、桌面端和手机端的对话里显示；界面脚本从 unpkg.com 加载（版本和完整性哈希固定）。界面数据放在工具结果的 `structuredContent` 里，不占模型上下文；大纲总量较大时，其余书的大纲在界面里展开时再读取（`library_outline`，只供界面调用）。
 
 ## 部署（一次性）
 
@@ -37,8 +41,9 @@
 
 1. **添加连接器**：claude.ai → Customize → Connectors → Add custom connector。URL 填 `https://math-reader-mcp.<子域名>.workers.dev/mcp`。对话框若询问认证方式，选 Sign in now；询问 OAuth client，选 Use Claude's published identity 或 Register automatically 均可。点 Add，再点 Connect，在弹出的页面输入密码并点“允许”。
 2. 网页版、桌面端和手机端登录同一个 Claude 账号即可使用这个连接器。
-3. **准备数据**：在 math-reader 里配置好 R2 同步并同步一次（上传书目索引）；书架长按要用的书 → “同步书页给 Claude”，等到提示“已同步给 Claude：共 N 页”。
-4. **写讲义**：在对话框点 **+** → Connectors，打开 Math Reader；然后提出要求，例如“用 Math Reader 为《书名》第 2 节写讲义”。
+3. **准备数据**：在 math-reader 里配置好 R2 同步并同步一次（上传书目索引）。书页可以逐本手动同步（书架长按要用的书 → “同步书页给 Claude”，等到提示“已同步给 Claude：共 N 页”），也可以打开 **设置 → 数据管理 → 自动同步到 Claude**。
+4. **选章节**：在对话框点 **+** → Connectors，打开 Math Reader；然后说“打开 Math Reader 书库”。对话里会出现书库界面：点书名展开大纲，点某一节的 **写讲义**，界面会替你发出带书名、节标题和页码范围的请求；没有大纲的书或论文可以在“按页码”一栏填页码范围。书页还没同步到的节，按钮不可点，旁边注明已同步到第几页；同步进行中可以点 **刷新**。内容多时点 **全屏**。
+5. **直接提要求**也可以，例如“用 Math Reader 为《书名》第 2 节写讲义”。
 
 ## 存储
 

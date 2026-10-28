@@ -62,7 +62,7 @@ export async function loadIndex(env: Env): Promise<LibraryIndex> {
   if (!index) {
     throw new LibraryError(
       'R2 里还没有 claude/index.json。请在 math-reader 里配置 R2 同步并同步一次；' +
-      '需要读书页时，在书架长按书籍选择“同步书页给 Claude”。',
+      '需要读书页时，在书架长按书籍选择“同步书页给 Claude”，或在设置 → 数据管理里打开“自动同步到 Claude”。',
     );
   }
   return index;
@@ -86,6 +86,13 @@ export function findDocument(index: LibraryIndex, query: string): LibraryDocumen
 
 export async function loadManifest(env: Env, docId: string): Promise<PageManifest | null> {
   return readJson<PageManifest>(env, `claude/docs/${docId}/manifest.json`);
+}
+
+/** 从第 1 页起连续同步到了第几页（math-reader 按页码顺序导出） */
+export function syncedThrough(manifest: PageManifest): number {
+  let page = 0;
+  while (page < manifest.totalPages && manifest.pages[String(page + 1)]?.length) page++;
+  return page;
 }
 
 export async function readPagePart(env: Env, part: PagePart): Promise<string> {
