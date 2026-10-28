@@ -44,7 +44,7 @@ ${VISUALIZATION_RULES}`;
 
 export const SERVER_INSTRUCTIONS = [
   'Math Reader 连接器读取用户 math-reader 书库（Cloudflare R2）里的书目、大纲、书页图片和 math-reader 已生成的讲义，全部只读。',
-  '用户想浏览书库、找书或挑选章节时调用 show_library：对话里会显示可交互的书目-大纲界面，用户在界面里点“写讲义”会发来带页码范围的请求。',
+  '用户想浏览书库、找书或挑选章节时调用 show_library：对话里会显示书库卡片，用户在全屏选择器里点书、点节后点“写讲义”，会发来带页码范围的请求；用户选中的书和节也会作为上下文告诉你。',
   `为某一节写讲义的流程：list_documents 找到书的 id → get_outline 得到这一节的页码范围 → read_pages 读完这一节的全部页面（${READ_ALL}）→ 按下面的结构写讲义。${AUDIENCE}`,
   '',
   LECTURE_STRUCTURE,

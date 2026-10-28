@@ -80,23 +80,23 @@ function createServer(env: Env): McpServer {
 
   registerAppTool(server, 'show_library', {
     title: '显示书库',
-    description: '在对话中显示可交互的书库界面：书目、每本书的大纲（节标题、PDF 页码、主题）、书页同步进度和 math-reader 已有的讲义。用户在界面里展开大纲、点某一节的“写讲义”，界面会发来带页码范围的写讲义请求。用户想浏览书库、找书或挑选章节时调用。',
+    description: '在对话中显示可点选的书库界面：用户用鼠标先点一本书，再点一节（或填页码范围），点“写讲义”后界面会发来带页码范围的写讲义请求；用户选中的书和节也会作为上下文告诉你。用户想浏览书库、找书、挑选章节时调用。',
     annotations: READ_ONLY,
     _meta: { ui: { resourceUri: LIBRARY_UI_URI } },
   }, () => run(async () => {
     const view = await buildLibraryView(env, await loadIndex(env));
     // 界面数据放在 structuredContent（不进入模型上下文）；文字部分给模型和不支持界面的客户端
     const text = view.documents.length
-      ? `已在对话中显示书库界面，共 ${view.documents.length} 个 PDF；用户可以在界面里展开大纲并点“写讲义”。\n` +
+      ? `已在对话中显示书库界面，共 ${view.documents.length} 个 PDF；用户可以在界面里点书、点节，再点“写讲义”。\n` +
         view.documents.map(documentLine).join('\n')
       : '书库里没有 PDF 书籍或论文。';
     return { content: [{ type: 'text', text }], structuredContent: view };
   }));
 
-  // 只供书库界面调用（visibility: app）：结果里没附带大纲的书，展开时读取
+  // 只供书库界面调用（visibility: app）：结果里没附带大纲的书，在界面里选中时读取
   registerAppTool(server, 'library_outline', {
     title: '书库界面：读取大纲',
-    description: '供 show_library 界面展开一本书时读取它的大纲数据。',
+    description: '供 show_library 界面选中一本书时读取它的大纲数据。',
     inputSchema: { document_id: z.string().describe('书的 id') },
     annotations: READ_ONLY,
     _meta: { ui: { visibility: ['app'] } },
@@ -210,6 +210,14 @@ function createServer(env: Env): McpServer {
       ? text.slice(0, LECTURE_CHAR_LIMIT) + `\n\n（正文共 ${text.length} 字符，已截取前 ${LECTURE_CHAR_LIMIT} 字符）`
       : text;
     return textResult(`《${doc.title}》${chapter.title}\n\n${body}`);
+  }));
+
+  // claude.ai 的“+ → 连接器”菜单只列提示模板，书库界面从这里也能打开
+  server.registerPrompt('open_library', {
+    title: '打开书库',
+    description: '在对话里显示 Math Reader 书库界面：书目和大纲，点某一节的“写讲义”即可开始。',
+  }, () => ({
+    messages: [{ role: 'user', content: { type: 'text', text: '打开 Math Reader 书库（调用 show_library）。' } }],
   }));
 
   server.registerPrompt('write_lecture', {

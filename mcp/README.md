@@ -15,14 +15,15 @@
 
 | 名称 | 作用 |
 |---|---|
-| `show_library` | 在对话里显示可交互的书库界面：书目、大纲（节标题、页码、主题）、书页同步进度、math-reader 已有讲义；可搜索，点某一节的“写讲义”或按页码范围发出写讲义请求 |
+| `show_library` | 在对话里显示书库卡片，点开是全屏选择器：左栏书目，右栏大纲（节标题、页码、主题），可搜索；点书、点节，再点“写讲义”发出写讲义请求 |
 | `list_documents` | 列出书籍和论文：id、页数、大纲节数、书页同步进度 |
 | `get_outline` | 一本书的大纲：每节标题、主题、PDF 页码范围，以及是否已有 math-reader 讲义 |
 | `read_pages` | 以图片返回书页（PDF 物理页码） |
 | `read_lecture` | 读取 math-reader 此前生成的讲义正文 |
+| `open_library`（提示模板“打开书库”） | 不用填参数，发出后 Claude 调用 `show_library` 显示书库界面 |
 | `write_lecture`（提示模板） | 读完一节后按 math-reader 的讲义结构（预习、大纲、习题）写讲义，并用内置可视化配图 |
 
-`show_library` 的界面用 MCP Apps（`@modelcontextprotocol/ext-apps`）实现，在 claude.ai 网页版、桌面端和手机端的对话里显示；界面脚本从 unpkg.com 加载（版本和完整性哈希固定）。界面数据放在工具结果的 `structuredContent` 里，不占模型上下文；大纲总量较大时，其余书的大纲在界面里展开时再读取（`library_outline`，只供界面调用）。
+`show_library` 的界面用 MCP Apps（`@modelcontextprotocol/ext-apps`）实现，在 claude.ai 网页版、桌面端和手机端的对话里显示，按 Claude 的界面规范：对话里只放一张不滚动的小卡片，长列表放在全屏里；界面脚本从 unpkg.com 加载（版本和完整性哈希固定），字体取自 assets.claude.ai。界面数据放在工具结果的 `structuredContent` 里，不占模型上下文；大纲总量较大时，其余书的大纲在界面里选中时再读取（`library_outline`，只供界面调用）。
 
 ## 部署（一次性）
 
@@ -42,7 +43,11 @@
 1. **添加连接器**：claude.ai → Customize → Connectors → Add custom connector。URL 填 `https://math-reader-mcp.<子域名>.workers.dev/mcp`。对话框若询问认证方式，选 Sign in now；询问 OAuth client，选 Use Claude's published identity 或 Register automatically 均可。点 Add，再点 Connect，在弹出的页面输入密码并点“允许”。
 2. 网页版、桌面端和手机端登录同一个 Claude 账号即可使用这个连接器。
 3. **准备数据**：在 math-reader 里配置好 R2 同步并同步一次（上传书目索引）。书页可以逐本手动同步（书架长按要用的书 → “同步书页给 Claude”，等到提示“已同步给 Claude：共 N 页”），也可以打开 **设置 → 数据管理 → 自动同步到 Claude**。
-4. **选章节**：在对话框点 **+** → Connectors，打开 Math Reader；然后说“打开 Math Reader 书库”。对话里会出现书库界面：点书名展开大纲，点某一节的 **写讲义**，界面会替你发出带书名、节标题和页码范围的请求；没有大纲的书或论文可以在“按页码”一栏填页码范围。书页还没同步到的节，按钮不可点，旁边注明已同步到第几页；同步进行中可以点 **刷新**。内容多时点 **全屏**。
+4. **选章节**：在对话框点 **+** → Connectors，打开 Math Reader；然后说“打开 Math Reader 书库”，或在 **+** 菜单的 Math Reader 下选提示模板“打开书库”再发送。Claude 的回复里出现书库卡片，点 **选择书和章节** 进入全屏选择器：
+   - 左栏点一本书，右栏列出它的大纲，点一节选中；没有大纲的书或论文在“按页码”一栏填页码范围。
+   - 底栏显示选中的书、节和页码范围，点 **写讲义**，界面替你发出请求并回到对话。书页还没同步到这一节时，底栏写明已同步到第几页，按钮不可点；同步进行中可以点 **刷新**。
+   - 选中的书和节也会告诉 Claude，选好后在对话框直接说“这一节……”也能对上。
+   - 窄屏（手机）先列书目，点书后进入章节列表，左上角“← 全部书目”返回。
 5. **直接提要求**也可以，例如“用 Math Reader 为《书名》第 2 节写讲义”。
 
 ## 存储
