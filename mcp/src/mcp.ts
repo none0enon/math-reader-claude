@@ -1,3 +1,4 @@
+import { RESOURCE_MIME_TYPE, registerAppResource, registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/cfworker';
@@ -6,8 +7,10 @@ import { z } from 'zod';
 import type { Env } from './env';
 import {
   LibraryError, findDocument, loadIndex, loadManifest, readLectureText, readPagePart,
-  type LibraryDocument,
 } from './library';
+import {
+  LIBRARY_UI_META, LIBRARY_UI_URI, buildLibraryView, chapterViews, libraryUiHtml,
+} from './library-ui';
 import { SERVER_INSTRUCTIONS, lecturePrompt } from './lecture';
 
 // claude.ai 的工具结果约 15 万字符封顶，base64 图片计入。每次 read_pages 按清单记录的
@@ -35,11 +38,27 @@ async function run(action: () => Promise<CallToolResult>): Promise<CallToolResul
   }
 }
 
-function pagesLine(doc: LibraryDocument): string {
-  if (!doc.pages) return '书页未同步';
-  return doc.pages.ready >= doc.pages.total
-    ? `书页已同步（${doc.pages.total} 页）`
-    : `书页已同步 ${doc.pages.ready}/${doc.pages.total} 页`;
+function pagesLine(pages: { ready: number; total: number } | null): string {
+  if (!pages) return '书页未同步';
+  return pages.ready >= pages.total
+    ? `书页已同步（${pages.total} 页）`
+    : `书页已同步 ${pages.ready}/${pages.total} 页`;
+}
+
+function documentLine(doc: {
+  id: string;
+  kind: 'book' | 'paper';
+  title: string;
+  author: string;
+  totalPages: number | null;
+  chapterCount: number;
+  pages: { ready: number; total: number } | null;
+}): string {
+  const kind = doc.kind === 'paper' ? '论文' : '书籍';
+  const author = doc.author ? ` · ${doc.author}` : '';
+  const pages = doc.totalPages ? ` · ${doc.totalPages} 页` : '';
+  const outline = doc.chapterCount ? ` · 大纲 ${doc.chapterCount} 节` : ' · 无大纲';
+  return `- 《${doc.title}》${author} · ${kind}${pages}${outline} · ${pagesLine(doc.pages)} · id: ${doc.id}`;
 }
 
 function createServer(env: Env): McpServer {
@@ -55,14 +74,46 @@ function createServer(env: Env): McpServer {
   }, () => run(async () => {
     const index = await loadIndex(env);
     if (!index.documents.length) return textResult('书库里没有 PDF 书籍或论文。');
-    const lines = index.documents.map((doc) => {
-      const kind = doc.kind === 'paper' ? '论文' : '书籍';
-      const author = doc.author ? ` · ${doc.author}` : '';
-      const pages = doc.totalPages ? ` · ${doc.totalPages} 页` : '';
-      const outline = doc.chapters.length ? ` · 大纲 ${doc.chapters.length} 节` : ' · 无大纲';
-      return `- 《${doc.title}》${author} · ${kind}${pages}${outline} · ${pagesLine(doc)} · id: ${doc.id}`;
-    });
+    const lines = index.documents.map((doc) => documentLine({ ...doc, chapterCount: doc.chapters.length }));
     return textResult(lines.join('\n'));
+  }));
+
+  registerAppTool(server, 'show_library', {
+    title: '显示书库',
+    description: '在对话中显示可交互的书库界面：书目、每本书的大纲（节标题、PDF 页码、主题）、书页同步进度和 math-reader 已有的讲义。用户在界面里展开大纲、点某一节的“写讲义”，界面会发来带页码范围的写讲义请求。用户想浏览书库、找书或挑选章节时调用。',
+    annotations: READ_ONLY,
+    _meta: { ui: { resourceUri: LIBRARY_UI_URI } },
+  }, () => run(async () => {
+    const view = await buildLibraryView(env, await loadIndex(env));
+    // 界面数据放在 structuredContent（不进入模型上下文）；文字部分给模型和不支持界面的客户端
+    const text = view.documents.length
+      ? `已在对话中显示书库界面，共 ${view.documents.length} 个 PDF；用户可以在界面里展开大纲并点“写讲义”。\n` +
+        view.documents.map(documentLine).join('\n')
+      : '书库里没有 PDF 书籍或论文。';
+    return { content: [{ type: 'text', text }], structuredContent: view };
+  }));
+
+  // 只供书库界面调用（visibility: app）：结果里没附带大纲的书，展开时读取
+  registerAppTool(server, 'library_outline', {
+    title: '书库界面：读取大纲',
+    description: '供 show_library 界面展开一本书时读取它的大纲数据。',
+    inputSchema: { document_id: z.string().describe('书的 id') },
+    annotations: READ_ONLY,
+    _meta: { ui: { visibility: ['app'] } },
+  }, ({ document_id }) => run(async () => {
+    const doc = findDocument(await loadIndex(env), document_id);
+    const chapters = chapterViews(doc);
+    return {
+      content: [{ type: 'text', text: `《${doc.title}》大纲 ${chapters.length} 节` }],
+      structuredContent: { id: doc.id, chapters },
+    };
+  }));
+
+  registerAppResource(server, 'Math Reader 书库界面', LIBRARY_UI_URI, {
+    description: 'show_library 显示的书目-大纲界面',
+    _meta: LIBRARY_UI_META,
+  }, () => ({
+    contents: [{ uri: LIBRARY_UI_URI, mimeType: RESOURCE_MIME_TYPE, text: libraryUiHtml(), _meta: LIBRARY_UI_META }],
   }));
 
   server.registerTool('get_outline', {
@@ -72,7 +123,7 @@ function createServer(env: Env): McpServer {
     annotations: READ_ONLY,
   }, ({ document }) => run(async () => {
     const doc = findDocument(await loadIndex(env), document);
-    const header = `《${doc.title}》 id: ${doc.id} · ${pagesLine(doc)}`;
+    const header = `《${doc.title}》 id: ${doc.id} · ${pagesLine(doc.pages)}`;
     if (!doc.chapters.length) {
       return textResult(`${header}\n这本书还没有大纲。可以直接用 read_pages 读目录页确定章节页码。`);
     }
@@ -97,7 +148,7 @@ function createServer(env: Env): McpServer {
     const doc = findDocument(await loadIndex(env), document);
     const manifest = await loadManifest(env, doc.id);
     if (!manifest) {
-      throw new LibraryError(`《${doc.title}》的书页还没有同步。请在 math-reader 书架长按这本书，选择“同步书页给 Claude”。`);
+      throw new LibraryError(`《${doc.title}》的书页还没有同步。请在 math-reader 书架长按这本书，选择“同步书页给 Claude”；或在设置 → 数据管理里打开“自动同步到 Claude”。`);
     }
     if (end_page !== undefined && end_page < start_page) {
       throw new LibraryError(`end_page（${end_page}）小于 start_page（${start_page}）。`);

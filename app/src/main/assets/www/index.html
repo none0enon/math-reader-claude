@@ -5926,6 +5926,22 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
             </div>
+            <div class="setting-item">
+                <div class="setting-item-left">
+                    <div class="setting-item-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><polyline points="9 10 12 7 15 10"/><line x1="12" y1="7" x2="12" y2="14"/></svg>
+                    </div>
+                    <div>
+                        <div class="setting-item-label" data-i18n="claude_auto_sync">自动同步到 Claude</div>
+                        <div class="setting-item-desc" data-i18n="claude_auto_sync_desc">新上传的 PDF 和新生成的大纲自动同步给 Claude 连接器（需要 R2）</div>
+                    </div>
+                </div>
+                <div class="setting-item-right">
+                    <div class="toggle" id="claudeAutoSyncToggle" onclick="toggleClaudeAutoSync()">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+            </div>
             <div class="setting-item" onclick="exportData()">
                 <div class="setting-item-left">
                     <div class="setting-item-icon">
@@ -6807,6 +6823,12 @@
                 claude_pages_progress:'同步书页给 Claude：{0}/{1}',
                 claude_pages_done:'已同步给 Claude：共 {0} 页',
                 claude_pages_failed:'同步书页失败：',
+                claude_pages_done_title:'已同步给 Claude：《{0}》共 {1} 页',
+                claude_auto_sync:'自动同步到 Claude',
+                claude_auto_sync_desc:'新上传的 PDF 和新生成的大纲自动同步给 Claude 连接器（需要 R2）',
+                claude_auto_sync_on:'已开启自动同步到 Claude',
+                claude_auto_sync_off:'已关闭自动同步到 Claude',
+                claude_auto_sync_include_existing:'书库里有 {0} 个 PDF 的书页还没同步给 Claude。\n确定：这些也一并同步\n取消：只同步以后新上传的',
                 prompt_abstract_sys:'你是一个学术论文分析专家。请根据提供的论文信息，生成一份结构化的摘要，包括：\n1. 研究背景和目的\n2. 研究方法\n3. 主要发现和结论\n4. 研究意义和贡献\n\n请使用学术性的语言，简洁清晰。',
                 prompt_abstract_user:'请为以下论文生成摘要：\n标题：',
                 prompt_abstract_author:'作者：',
@@ -7003,6 +7025,12 @@
                 claude_pages_progress:'Sending pages to Claude: {0}/{1}',
                 claude_pages_done:'Sent to Claude: {0} pages',
                 claude_pages_failed:'Sending pages failed: ',
+                claude_pages_done_title:'Sent to Claude: "{0}", {1} pages',
+                claude_auto_sync:'Auto-sync to Claude',
+                claude_auto_sync_desc:'Send newly uploaded PDFs and newly generated outlines to the Claude connector automatically (requires R2)',
+                claude_auto_sync_on:'Auto-sync to Claude is on',
+                claude_auto_sync_off:'Auto-sync to Claude is off',
+                claude_auto_sync_include_existing:'{0} PDFs in the library have pages not yet sent to Claude.\nOK: send them as well\nCancel: only send PDFs uploaded from now on',
                 prompt_abstract_sys:'You are an academic paper analysis expert. Generate a structured abstract including:\n1. Research background and objectives\n2. Methodology\n3. Key findings and conclusions\n4. Significance and contributions\n\nUse academic language, concise and clear.',
                 prompt_abstract_user:'Generate an abstract for:\nTitle: ',
                 prompt_abstract_author:'Authors: ',
@@ -7199,6 +7227,12 @@
                 claude_pages_progress:'Envoi des pages à Claude : {0}/{1}',
                 claude_pages_done:'Envoyé à Claude : {0} pages',
                 claude_pages_failed:'Échec de l\'envoi des pages : ',
+                claude_pages_done_title:'Envoyé à Claude : « {0} », {1} pages',
+                claude_auto_sync:'Synchronisation automatique vers Claude',
+                claude_auto_sync_desc:'Envoie automatiquement au connecteur Claude les PDF ajoutés et les plans générés (nécessite R2)',
+                claude_auto_sync_on:'Synchronisation automatique vers Claude activée',
+                claude_auto_sync_off:'Synchronisation automatique vers Claude désactivée',
+                claude_auto_sync_include_existing:'{0} PDF de la bibliothèque ont des pages pas encore envoyées à Claude.\nOK : les envoyer aussi\nAnnuler : n\'envoyer que les PDF ajoutés à partir de maintenant',
                 prompt_abstract_sys:'Tu es un expert en analyse d\'articles scientifiques. Génère un résumé structuré :\n1. Contexte et objectifs\n2. Méthodologie\n3. Résultats et conclusions\n4. Importance et contributions\n\nLangue académique, concis et clair.',
                 prompt_abstract_user:'Génère un résumé pour :\nTitre : ',
                 prompt_abstract_author:'Auteurs : ',
@@ -7641,6 +7675,8 @@
             autoSyncFromR2OnStartup();
             // “变更时同步”也必须在重启后恢复未提交正文和持久删除 outbox。
             resumePendingClassroomSync();
+            // 自动同步到 Claude：等启动时的云端拉取结束后，续传上次没导完的书页并补上新增的书
+            setTimeout(claudeAutoSyncScan, 20000);
 
             // 页面隐藏或关闭前：立刻把当前阅读进度写回（绕开 100ms 防抖），
             // 防止用户快速翻到新页后立刻退出 app 导致进度丢失。
@@ -9858,6 +9894,7 @@
                     
                     // 触发文件变更自动同步
                     triggerSyncOnFileChange(docId, 'upload');
+                    claudeAutoSyncOnNewDoc(doc, currentUploadType);
                 } catch(err) {
                     showToast(i18n('toast_save_failed') + err.message);
                 }
@@ -12668,6 +12705,9 @@
             } catch(e) { optimizeWritingLatency = false; }
             const wlToggle = document.getElementById('writingLatencyToggle');
             if (wlToggle) wlToggle.classList.toggle('on', optimizeWritingLatency);
+
+            // 自动同步到 Claude（仅本地存储，不参与云同步）
+            updateClaudeAutoSyncToggle();
         }
 
         function saveSettings() {
@@ -15404,32 +15444,42 @@
             return pdfjsLib.getDocument({ data: typeof fileData === 'string' ? bytes : bytes.slice(0) }).promise;
         }
 
-        async function exportDocPagesForClaude(id, category) {
-            closeLongPressMenu();
+        // options.quiet：后台自动同步用。只提示完成和失败；云端清单已完整时不加载 PDF，直接记为已同步。
+        // options.shouldStop：每页前检查，返回 true 时保存已导出的部分后停止。
+        // 返回 true 表示这本书的书页已全部同步。
+        async function exportDocPagesForClaude(id, category, options = {}) {
+            const quiet = !!options.quiet;
+            if (!quiet) closeLongPressMenu();
             if (!claudeR2Configured()) {
-                showToast(i18n('claude_pages_need_r2'));
+                if (!quiet) showToast(i18n('claude_pages_need_r2'));
                 return;
             }
             if (claudePageExportRunning) {
-                showToast(i18n('claude_pages_running'));
+                if (!quiet) showToast(i18n('claude_pages_running'));
                 return;
             }
             const doc = (category === 'paper' ? appData.papers : appData.books).find(d => d.id === id);
             if (!doc) return;
             if (doc.type !== 'pdf') {
-                showToast(i18n('prompt_pdf_only'));
+                if (!quiet) showToast(i18n('prompt_pdf_only'));
                 return;
             }
             claudePageExportRunning = true;
             let pdf = null;
             try {
-                showToast(i18n('toast_processing'));
-                pdf = await claudeLoadDocPdf(doc);
-                const total = pdf.numPages;
-                const fingerprint = pdf.fingerprints?.[0] || '';
                 const prefix = 'claude/docs/' + doc.id + '/';
                 let manifest = null;
                 try { manifest = JSON.parse(await r2GetObject(prefix + 'manifest.json') || 'null'); } catch (e) {}
+                if (quiet && manifest?.pages && Object.keys(manifest.pages).length >= manifest.totalPages) {
+                    saveClaudePagesState(doc.id, {
+                        ready: manifest.totalPages, total: manifest.totalPages, updatedAt: manifest.updatedAt
+                    });
+                    return true;
+                }
+                if (!quiet) showToast(i18n('toast_processing'));
+                pdf = await claudeLoadDocPdf(doc);
+                const total = pdf.numPages;
+                const fingerprint = pdf.fingerprints?.[0] || '';
                 // 换过文件或渲染宽度时从头导出；否则跳过已上传的页，从断点继续
                 if (!manifest || manifest.totalPages !== total || manifest.width !== CLAUDE_PAGE_WIDTH ||
                         manifest.fingerprint !== fingerprint) {
@@ -15437,13 +15487,27 @@
                         version: 1, docId: doc.id, fingerprint, totalPages: total, width: CLAUDE_PAGE_WIDTH, pages: {}
                     };
                 }
+                // 进度同时记在本机：中断后启动时据此续传
+                const recordProgress = () => saveClaudePagesState(doc.id, {
+                    ready: Object.keys(manifest.pages).length, total, updatedAt: manifest.updatedAt
+                });
+                recordProgress();
                 const saveManifest = async () => {
                     manifest.updatedAt = new Date().toISOString();
                     await r2PutObject(prefix + 'manifest.json', JSON.stringify(manifest), 'application/json');
                 };
                 let sinceSave = 0;
+                // 导出途中每隔一段时间更新书目索引，Claude 端能看到已同步到第几页
+                let indexPublishedAt = Date.now();
                 for (let n = 1; n <= total; n++) {
                     if (manifest.pages[n]?.length) continue;
+                    if (options.shouldStop?.()) {
+                        if (sinceSave) {
+                            await saveManifest();
+                            recordProgress();
+                        }
+                        return false;
+                    }
                     const canvas = await claudeRenderPage(pdf, n);
                     let parts;
                     try { parts = claudeEncodePage(canvas); }
@@ -15458,18 +15522,23 @@
                     if (++sinceSave >= 10) {
                         sinceSave = 0;
                         await saveManifest();
-                        showToast(i18n('claude_pages_progress', n, total));
+                        recordProgress();
+                        if (!quiet) showToast(i18n('claude_pages_progress', n, total));
+                        if (Date.now() - indexPublishedAt > 60000) {
+                            indexPublishedAt = Date.now();
+                            publishClaudeIndex().catch(e => console.warn('Claude 索引上传失败:', e));
+                        }
                     }
                 }
                 await saveManifest();
-                saveClaudePagesState(doc.id, {
-                    ready: Object.keys(manifest.pages).length, total, updatedAt: manifest.updatedAt
-                });
+                recordProgress();
                 await publishClaudeIndex({ force: true });
-                showToast(i18n('claude_pages_done', total));
+                showToast(quiet ? i18n('claude_pages_done_title', doc.title || '', total) : i18n('claude_pages_done', total));
+                return true;
             } catch (e) {
                 console.error('同步书页给 Claude 失败:', e);
-                showToast(i18n('claude_pages_failed') + (e?.message || e));
+                showToast(i18n('claude_pages_failed') + (quiet && doc.title ? '《' + doc.title + '》' : '') + (e?.message || e));
+                return false;
             } finally {
                 if (pdf) pdf.destroy();
                 claudePageExportRunning = false;
@@ -15509,6 +15578,16 @@
             return documents;
         }
 
+        // 云端索引里记录的书页进度：{ docId: { ready, total, updatedAt } }
+        async function loadClaudeCloudPages() {
+            const pages = {};
+            try {
+                const cloud = JSON.parse(await r2GetObject('claude/index.json') || 'null');
+                (cloud?.documents || []).forEach(d => { if (d?.id && d.pages) pages[d.id] = d.pages; });
+            } catch (e) {}
+            return pages;
+        }
+
         // 书目、大纲和讲义编号写入 claude/index.json；与上次上传的内容相同则跳过
         async function publishClaudeIndex(options = {}) {
             if (!appDataLoaded || !claudeR2Configured()) return;
@@ -15516,11 +15595,7 @@
             const digest = await sha256Hex(JSON.stringify(buildClaudeIndexDocuments(id => localPages[id] || null)));
             if (!options.force && digest === localStorage.getItem(CLAUDE_INDEX_DIGEST_KEY)) return;
             // 其他设备导出的书页进度只记在云端索引里，本机没有记录的沿用云端
-            const cloudPages = {};
-            try {
-                const cloud = JSON.parse(await r2GetObject('claude/index.json') || 'null');
-                (cloud?.documents || []).forEach(d => { if (d?.id && d.pages) cloudPages[d.id] = d.pages; });
-            } catch (e) {}
+            const cloudPages = await loadClaudeCloudPages();
             const documents = buildClaudeIndexDocuments(id => localPages[id] || cloudPages[id] || null);
             await r2PutObject('claude/index.json',
                 JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), documents }),
@@ -15532,7 +15607,138 @@
             clearTimeout(claudeIndexPublishTimer);
             claudeIndexPublishTimer = setTimeout(() => {
                 publishClaudeIndex().catch(e => console.warn('Claude 索引上传失败:', e));
+                // 同步可能从其他设备带来新书，顺带检查自动同步
+                claudeAutoSyncScan();
             }, 3000);
+        }
+
+        // ==================== 自动同步到 Claude ====================
+        // 开关只存本机：{ enabled, since, includeExisting }。开启后新上传的 PDF 自动导出书页；
+        // 生成大纲后立即更新书目索引并导出这本书；开启时可选择把已有的书一并导出。
+        // 队列逐本处理，关掉开关时当前这本在下一页前停下；中断的由启动时的扫描按本机进度续传。
+        const CLAUDE_AUTO_SYNC_KEY = 'mathreader_claude_auto_sync';
+        let claudeAutoSyncQueue = [];
+        let claudeAutoSyncRunning = false;
+        let claudeAutoSyncCurrent = null;
+        let claudeAutoSyncToggleBusy = false;
+        // 本次运行中导出失败的书不再自动重试，免得反复提示；重启应用或重新打开开关后再试
+        const claudeAutoSyncFailed = new Set();
+
+        function loadClaudeAutoSync() {
+            try { return JSON.parse(localStorage.getItem(CLAUDE_AUTO_SYNC_KEY) || 'null') || { enabled: false }; }
+            catch (e) { return { enabled: false }; }
+        }
+
+        function updateClaudeAutoSyncToggle() {
+            const toggle = document.getElementById('claudeAutoSyncToggle');
+            if (toggle) toggle.classList.toggle('on', !!loadClaudeAutoSync().enabled);
+        }
+
+        // 书页还没同步完的 PDF 书籍和论文；本机没有记录的按云端索引判断
+        function claudeDocsPendingPages(cloudPages = {}) {
+            const local = loadClaudePagesState();
+            const pending = [];
+            const add = (doc, category) => {
+                if (!doc || doc.type !== 'pdf') return;
+                const pages = local[doc.id] || cloudPages[doc.id];
+                if (!pages || pages.ready < pages.total) pending.push({ doc, category });
+            };
+            (appData.books || []).forEach(doc => add(doc, 'book'));
+            (appData.papers || []).forEach(doc => add(doc, 'paper'));
+            return pending;
+        }
+
+        async function toggleClaudeAutoSync() {
+            if (claudeAutoSyncToggleBusy) return;
+            if (loadClaudeAutoSync().enabled) {
+                try { localStorage.setItem(CLAUDE_AUTO_SYNC_KEY, JSON.stringify({ enabled: false })); } catch (e) {}
+                claudeAutoSyncQueue = [];
+                updateClaudeAutoSyncToggle();
+                showToast(i18n('claude_auto_sync_off'));
+                return;
+            }
+            if (!claudeR2Configured()) {
+                showToast(i18n('claude_pages_need_r2'));
+                return;
+            }
+            claudeAutoSyncToggleBusy = true;
+            let includeExisting = false;
+            try {
+                showToast(i18n('toast_processing'));
+                const pending = claudeDocsPendingPages(await loadClaudeCloudPages()).length;
+                includeExisting = pending > 0 && confirm(i18n('claude_auto_sync_include_existing', pending));
+            } finally {
+                claudeAutoSyncToggleBusy = false;
+            }
+            try {
+                localStorage.setItem(CLAUDE_AUTO_SYNC_KEY, JSON.stringify({
+                    enabled: true, since: new Date().toISOString(), includeExisting
+                }));
+            } catch (e) {}
+            claudeAutoSyncFailed.clear();
+            updateClaudeAutoSyncToggle();
+            showToast(i18n('claude_auto_sync_on'));
+            publishClaudeIndex({ force: true }).catch(e => console.warn('Claude 索引上传失败:', e));
+            claudeAutoSyncScan();
+        }
+
+        // 排队：本机已开始但没导完的、开启后新增的，以及开启时选择一并同步的全部书
+        function claudeAutoSyncScan() {
+            const state = loadClaudeAutoSync();
+            if (!state.enabled || !appDataLoaded || !claudeR2Configured()) return;
+            const since = Date.parse(state.since || '') || 0;
+            const local = loadClaudePagesState();
+            claudeDocsPendingPages().forEach(({ doc, category }) => {
+                const started = !!local[doc.id];
+                const isNew = (Date.parse(doc.addedAt || '') || 0) >= since;
+                if (started || isNew || state.includeExisting) claudeAutoSyncEnqueue(doc.id, category);
+            });
+        }
+
+        function claudeAutoSyncEnqueue(id, category) {
+            if (id === claudeAutoSyncCurrent || claudeAutoSyncFailed.has(id) ||
+                    claudeAutoSyncQueue.some(item => item.id === id)) return;
+            claudeAutoSyncQueue.push({ id, category });
+            if (!claudeAutoSyncRunning) runClaudeAutoSyncQueue();
+        }
+
+        async function runClaudeAutoSyncQueue() {
+            claudeAutoSyncRunning = true;
+            try {
+                while (claudeAutoSyncQueue.length && loadClaudeAutoSync().enabled) {
+                    // 长按触发的导出正在进行时等它结束
+                    if (claudePageExportRunning) {
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        continue;
+                    }
+                    const item = claudeAutoSyncQueue.shift();
+                    claudeAutoSyncCurrent = item.id;
+                    const done = await exportDocPagesForClaude(item.id, item.category, {
+                        quiet: true, shouldStop: () => !loadClaudeAutoSync().enabled
+                    });
+                    claudeAutoSyncCurrent = null;
+                    if (!done && loadClaudeAutoSync().enabled) claudeAutoSyncFailed.add(item.id);
+                }
+            } finally {
+                claudeAutoSyncCurrent = null;
+                claudeAutoSyncRunning = false;
+            }
+        }
+
+        function claudeAutoSyncOnNewDoc(doc, category) {
+            if (!loadClaudeAutoSync().enabled || doc?.type !== 'pdf') return;
+            claudeAutoSyncEnqueue(doc.id, category === 'paper' ? 'paper' : 'book');
+        }
+
+        // 新大纲立即写进书目索引，书页没同步完的接着导出
+        function claudeAutoSyncOnOutline(bookId) {
+            if (!loadClaudeAutoSync().enabled) return;
+            publishClaudeIndex({ force: true }).catch(e => console.warn('Claude 索引上传失败:', e));
+            const pages = loadClaudePagesState()[bookId];
+            if (!pages || pages.ready < pages.total) {
+                claudeAutoSyncFailed.delete(bookId);
+                claudeAutoSyncEnqueue(bookId, 'book');
+            }
         }
 
         // 清理doc对象用于同步：去掉data、chatHistory中去掉screenshot并限制30条
@@ -20767,6 +20973,7 @@ ${i18n('prompt_outline_gen')}`;
                 saveData();
                 triggerSyncOnFileChange(bookId, 'outline_update');
                 showToast(i18n('toast_outline_generated', chapters.length));
+                claudeAutoSyncOnOutline(bookId);
             } catch (e) {
                 console.error('生成大纲失败:', e);
                 showToast(i18n('toast_gen_failed') + e.message);
