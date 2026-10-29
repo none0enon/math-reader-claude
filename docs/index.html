@@ -1047,10 +1047,23 @@
            不能因文本工具或未编辑的 contenteditable 放开整个书写页。 */
         html:not(.nb-editor-open) body.lecture-pen-mode #lectureViewerContent :is(input, textarea, [contenteditable="true"], [contenteditable="true"] *),
         html:not(.nb-editor-open) #lectureDraftCanvasWrapper.active :is(input, textarea, [contenteditable="true"], [contenteditable="true"] *),
-        :is(#nbEditor.show, #nbExportModal.show, #nbQuizModal.show, #nbQuizFullscreen.show) :is(input:focus, textarea:focus, [contenteditable="true"]:focus, [contenteditable="true"]:focus *) {
+        :is(#nbEditor.show, #nbExportModal.show, #nbQuizModal.show, #nbQuizFullscreen.show, #readerChatModal.show) :is(input:focus, textarea:focus, [contenteditable="true"]:focus, [contenteditable="true"]:focus *) {
             -webkit-user-select: text !important;
             user-select: text !important;
             -webkit-touch-callout: default !important;
+        }
+        /* 笔记本里打开的 AI 对话沿用对话弹窗自己的选区规则（桌面默认可选，触摸设备长按气泡后可选），以便引用 */
+        html.nb-editor-open #readerChatModal.show .chat-bubble,
+        html.nb-editor-open #readerChatModal.show .chat-bubble * {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+        }
+        @media (pointer: coarse) {
+            html.nb-editor-open #readerChatModal.show .chat-bubble:not(.selectable),
+            html.nb-editor-open #readerChatModal.show .chat-bubble:not(.selectable) * {
+                -webkit-user-select: none !important;
+                user-select: none !important;
+            }
         }
         body.lecture-pen-mode .eink-lecture-tap-zone { pointer-events: none; }
         /* AI 评论的计数圆点：沿用笔记 marker，换蓝色以区分手写笔记 */
@@ -4738,6 +4751,9 @@
             flex-direction: column;
         }
         .nb-editor.show { display: flex; }
+        /* 编辑器里打开的笔记 AI 对话要盖在编辑器之上，选中文字后的“引用”按钮再高一层 */
+        html.nb-editor-open #readerChatModal { z-index: 3100; }
+        html.nb-editor-open .chat-quote-btn { z-index: 3110; }
         .nb-topbar {
             height: 52px; flex-shrink: 0;
             background: var(--bg-primary);
@@ -4964,6 +4980,21 @@
         .nb-quiz-body { padding: 4px 18px 12px; overflow-y: auto; font-size: 14px; line-height: 1.7; color: var(--text-primary); }
         .nb-quiz-body h1, .nb-quiz-body h2, .nb-quiz-body h3 { margin: 12px 0 6px; }
         .nb-quiz-body .katex-display { overflow-x: auto; }
+        /* 套索问 AI：圈选图片、补充问题输入框、已发送的问题 */
+        .nb-ask-image {
+            display: block; max-width: 100%; max-height: 220px; margin: 4px auto 10px;
+            border: 1px solid var(--border-color); border-radius: 8px;
+        }
+        .nb-ask-input {
+            width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; font-family: inherit;
+            border: 1px solid var(--border-color); border-radius: 10px;
+            background: var(--bg-secondary); color: var(--text-primary);
+        }
+        .nb-ask-input:focus { outline: none; border-color: var(--accent); }
+        .nb-ask-question {
+            margin-bottom: 8px; padding: 4px 10px; border-left: 3px solid var(--accent);
+            color: var(--text-secondary); white-space: pre-wrap;
+        }
         .nb-quiz-foot { padding: 10px 18px 14px; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; border-top: 1px solid var(--border-color, rgba(0,0,0,0.08)); }
 
         /* ---------- Quiz 全屏做题视图 ---------- */
@@ -5680,14 +5711,28 @@
             </div>
         </div>
 
-        <!-- AI 功能分配：按模块折叠，每个功能单独选择主要 / 次要 / 备用 API -->
+        <!-- AI 功能分配：整体默认收起；展开后按模块折叠，每个功能单独选择主要 / 次要 / 备用 API -->
         <div class="settings-section">
             <div class="settings-section-title" data-i18n="ai_route_settings">AI 功能分配</div>
-            <div class="ai-route-hint">
-                <div id="aiRouteApiSummary"></div>
-                <div data-i18n="ai_route_hint">每个功能可单独选择主要、次要或备用 API。所选 API 未配置时改用主要 API；调用失败时改用备用 API（所选为备用时改用主要 API）。</div>
+            <div class="setting-item" onclick="toggleAIRouteSettings()">
+                <div class="setting-item-left">
+                    <div class="setting-item-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                    </div>
+                    <div>
+                        <div class="setting-item-label" data-i18n="ai_route_all_features">全部 AI 功能</div>
+                        <div class="setting-item-desc" id="aiRouteOverview"></div>
+                    </div>
+                </div>
+                <span class="settings-item-arrow" id="aiRouteArrow">›</span>
             </div>
-            <div id="aiRouteGroups"></div>
+            <div id="aiRouteBody" style="display: none;">
+                <div class="ai-route-hint">
+                    <div id="aiRouteApiSummary"></div>
+                    <div data-i18n="ai_route_hint">每个功能可单独选择主要、次要或备用 API。所选 API 未配置时改用主要 API；调用失败时改用备用 API（所选为备用时改用主要 API）。</div>
+                </div>
+                <div id="aiRouteGroups"></div>
+            </div>
         </div>
 
         <!-- Theme Settings (faithful to original) -->
@@ -6486,6 +6531,10 @@
             </div>
             <div class="nb-lb-spacer"></div>
             <div class="nb-lb-group">
+                <button class="nb-lb-btn" onclick="nbOpenAIChat()" title="AI 对话" data-i18n-title="ai_chat">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                    <span data-i18n="ai_chat">AI 对话</span>
+                </button>
                 <button class="nb-lb-btn" onclick="nbShowPanel('search', this)" title="搜索" data-i18n-title="search">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <span data-i18n="search">搜索</span>
@@ -7450,7 +7499,7 @@
         Object.assign(I18N.zh, {
             secondary_api:'次要 API', secondary_api_desc:'(在设置页按功能选用)', no_secondary:'不使用次要',
             toast_api_failover:'{0} 调用失败，尝试{1}...',
-            ai_route_settings:'AI 功能分配',
+            ai_route_settings:'AI 功能分配', ai_route_all_features:'全部 AI 功能',
             ai_route_hint:'每个功能可单独选择主要、次要或备用 API。所选 API 未配置时改用主要 API；调用失败时改用备用 API（所选为备用时改用主要 API）。',
             ai_route_api_entry:'{0}：{1}', ai_route_not_configured:'未配置',
             ai_route_slot_primary:'主要', ai_route_slot_secondary:'次要', ai_route_slot_backup:'备用',
@@ -7472,6 +7521,10 @@
             ai_feat_lecture_chat_send:'讲义 AI 对话：发送消息', ai_feat_lecture_chat_regen:'讲义 AI 对话：重新生成回答',
             ai_feat_lecture_chat_edit:'讲义 AI 对话：编辑消息后重新回答',
             ai_feat_notebook_lasso_recognize:'套索选区 AI 识别', ai_feat_notebook_handwriting_index:'AI 识别手写并建立索引',
+            ai_feat_notebook_lasso_ask:'套索选区问 AI',
+            ai_feat_notebook_chat_send:'笔记 AI 对话：发送消息', ai_feat_notebook_chat_regen:'笔记 AI 对话：重新生成回答',
+            ai_feat_notebook_chat_edit:'笔记 AI 对话：编辑消息后重新回答',
+            ai_chat:'AI 对话', prompt_notebook_chat_attachment:'附件《{0}》是这一页笔记的图片。',
             ai_feat_review_add:'加入复习（生成首个 Quiz）', ai_feat_review_next_stage:'评分后生成下一阶段 Quiz',
             ai_feat_review_extra:'生成巩固加练 Quiz', ai_feat_review_regenerate:'重新生成 Quiz',
             ai_feat_review_retry:'Quiz 生成失败后重试', ai_feat_review_restart:'重新开始复习（生成首个 Quiz）',
@@ -7486,7 +7539,7 @@
         Object.assign(I18N.en, {
             secondary_api:'Secondary API', secondary_api_desc:'(choose it per feature in Settings)', no_secondary:'No secondary',
             toast_api_failover:'{0} failed, trying {1}...',
-            ai_route_settings:'AI Feature Assignment',
+            ai_route_settings:'AI Feature Assignment', ai_route_all_features:'All AI features',
             ai_route_hint:'Choose the primary, secondary, or backup API for each feature. If the selected API is not configured, the primary API is used; if a call fails, the backup API is tried (or the primary API when the backup was selected).',
             ai_route_api_entry:'{0}: {1}', ai_route_not_configured:'not configured',
             ai_route_slot_primary:'Primary', ai_route_slot_secondary:'Secondary', ai_route_slot_backup:'Backup',
@@ -7508,6 +7561,10 @@
             ai_feat_lecture_chat_send:'Lecture AI chat: send message', ai_feat_lecture_chat_regen:'Lecture AI chat: regenerate reply',
             ai_feat_lecture_chat_edit:'Lecture AI chat: edit message and resend',
             ai_feat_notebook_lasso_recognize:'AI recognition of a lasso selection', ai_feat_notebook_handwriting_index:'Use AI to index handwriting',
+            ai_feat_notebook_lasso_ask:'Ask AI about a lasso selection',
+            ai_feat_notebook_chat_send:'Notes AI chat: send message', ai_feat_notebook_chat_regen:'Notes AI chat: regenerate reply',
+            ai_feat_notebook_chat_edit:'Notes AI chat: edit message and resend',
+            ai_chat:'AI chat', prompt_notebook_chat_attachment:'Attachment “{0}” is an image of this notes page.',
             ai_feat_review_add:'Add to review (first quiz)', ai_feat_review_next_stage:'Next-stage quiz after grading',
             ai_feat_review_extra:'Consolidation practice quiz', ai_feat_review_regenerate:'Regenerate quiz',
             ai_feat_review_retry:'Retry a failed quiz', ai_feat_review_restart:'Restart review (first quiz)',
@@ -7522,7 +7579,7 @@
         Object.assign(I18N.fr, {
             secondary_api:'API secondaire', secondary_api_desc:'(à choisir par fonction dans Réglages)', no_secondary:'Pas d’API secondaire',
             toast_api_failover:'{0} a échoué, tentative avec {1}...',
-            ai_route_settings:'IA par fonction',
+            ai_route_settings:'IA par fonction', ai_route_all_features:'Toutes les fonctions IA',
             ai_route_hint:'Choisissez l’API principale, secondaire ou de secours pour chaque fonction. Si l’API choisie n’est pas configurée, l’API principale est utilisée ; en cas d’échec, l’API de secours prend le relais (ou l’API principale si le secours était choisi).',
             ai_route_api_entry:'{0} : {1}', ai_route_not_configured:'non configurée',
             ai_route_slot_primary:'Principale', ai_route_slot_secondary:'Secondaire', ai_route_slot_backup:'Secours',
@@ -7544,6 +7601,10 @@
             ai_feat_lecture_chat_send:'Discussion IA du cours : envoyer', ai_feat_lecture_chat_regen:'Discussion IA du cours : régénérer la réponse',
             ai_feat_lecture_chat_edit:'Discussion IA du cours : modifier et renvoyer',
             ai_feat_notebook_lasso_recognize:'Reconnaissance IA de la sélection au lasso', ai_feat_notebook_handwriting_index:'Indexer l’écriture manuscrite avec l’IA',
+            ai_feat_notebook_lasso_ask:'Demander à l’IA sur la sélection au lasso',
+            ai_feat_notebook_chat_send:'Discussion IA des notes : envoyer', ai_feat_notebook_chat_regen:'Discussion IA des notes : régénérer la réponse',
+            ai_feat_notebook_chat_edit:'Discussion IA des notes : modifier et renvoyer',
+            ai_chat:'Discussion IA', prompt_notebook_chat_attachment:'La pièce jointe « {0} » est une image de cette page de notes.',
             ai_feat_review_add:'Ajouter aux révisions (premier quiz)', ai_feat_review_next_stage:'Quiz de l’étape suivante après notation',
             ai_feat_review_extra:'Quiz d’exercice de consolidation', ai_feat_review_regenerate:'Régénérer le quiz',
             ai_feat_review_retry:'Réessayer un quiz en échec', ai_feat_review_restart:'Recommencer les révisions (premier quiz)',
@@ -9806,6 +9867,8 @@
                     notice.closed = true;
                     if (notice.message) showToast(notice.message);
                 }
+                // 从笔记本编辑器打开的笔记 AI 对话关闭后恢复原生直渲染
+                if (document.documentElement.classList.contains('nb-editor-open')) nbUpdateNativeSuspend();
             }
         }
 
@@ -12405,22 +12468,25 @@
                 const hasAbstract = paper.hasAiAbstract || paper.aiAbstract || paper.abstract;
                 const previewText = paper._abstractCache || paper.aiAbstract || paper.abstract || '';
                 const displayText = previewText ? previewText.substring(0, 150) + (previewText.length > 150 ? '...' : '') : i18n(hasAbstract ? 'click_to_view' : 'no_abstract');
+                const generatingText = abstractStreams.has(paper.id)
+                    ? `<span style="color:var(--accent);font-size:11px;margin-left:6px;">${i18n('generating')}</span>` : '';
                 papersHtml += `<div class="abstract-card" onclick="openAbstractInViewer('${paper.id}')">
-                    <div class="abstract-card-title">${escapeHtml(paper.title)}</div>
+                    <div class="abstract-card-title">${escapeHtml(paper.title)}${generatingText}</div>
                     <div class="abstract-card-text">${escapeHtml(displayText)}</div>
                 </div>`;
             });
             papersContainer.innerHTML = papersHtml || '<div class="empty-state"><p>' + i18n('no_paper_abstracts') + '</p></div>';
         }
 
-        // 用讲义阅读器打开论文摘要
+        // 用讲义阅读器打开论文摘要；正在生成时显示已收到的正文。打开了返回 true
         async function openAbstractInViewer(paperId) {
             const paper = appData.papers.find(p => p.id === paperId);
-            if (!paper) return;
-            
+            if (!paper) return false;
+            const generating = abstractStreams.has(paperId);
+
             // 从缓存 / IndexedDB / R2 加载摘要内容
             let abstractText = paper._abstractCache || null;
-            if (!abstractText && (paper.hasAiAbstract || paper.aiAbstract)) {
+            if (!generating && !abstractText && (paper.hasAiAbstract || paper.aiAbstract)) {
                 // 兼容旧数据：aiAbstract 可能还在内存中（迁移前）
                 if (paper.aiAbstract) {
                     abstractText = paper.aiAbstract;
@@ -12454,58 +12520,46 @@
             }
             // 回退到原始摘要
             if (!abstractText) abstractText = paper.abstract;
-            if (!abstractText) {
+            if (!abstractText && !generating) {
                 showToast(i18n('toast_no_abstract_paper'));
-                return;
+                return false;
             }
-            
+
             // 打开讲义阅读器显示摘要
             document.getElementById('lectureViewerTitle').textContent = paper.title + i18n('abstract_suffix');
             document.getElementById('lectureProgressBadge').textContent = '100%';
-            
-            // 渲染摘要内容
-            const content = document.getElementById('lectureViewerContent');
-            let html = `<div class="lecture-body">`;
-            
-            // 处理摘要文本，保持段落格式
-            const paragraphs = abstractText.split('\n').filter(p => p.trim());
-            paragraphs.forEach(p => {
-                // 检查是否是标题行（以数字开头或全大写等）
-                if (/^\d+[\.\、]/.test(p.trim()) || /^[一二三四五六七八九十]+[\.\、]/.test(p.trim())) {
-                    html += `<h3>${escapeHtml(p)}</h3>`;
-                } else if (p.trim().endsWith(':') || p.trim().endsWith('：')) {
-                    html += `<h3>${escapeHtml(p)}</h3>`;
-                } else {
-                    html += `<p>${escapeHtml(p)}</p>`;
-                }
-            });
-            
-            html += `</div>`;
-            content.innerHTML = html;
 
-            // 添加绘制canvas
-            const lectureBody = content.querySelector('.lecture-body');
-            if (lectureBody) {
-                lectureBody.style.position = 'relative';
-                const canvas = document.createElement('canvas');
-                canvas.id = 'lectureDrawCanvas';
-                canvas.className = 'lecture-draw-canvas';
-                lectureBody.appendChild(canvas);
+            // 渲染摘要内容；生成中不加画布
+            const content = document.getElementById('lectureViewerContent');
+            if (generating) {
+                renderAbstractStream(content, abstractStreams.get(paperId).text);
+            } else {
+                content.innerHTML = abstractBodyHtml(abstractText);
+
+                // 添加绘制canvas
+                const lectureBody = content.querySelector('.lecture-body');
+                if (lectureBody) {
+                    lectureBody.style.position = 'relative';
+                    const canvas = document.createElement('canvas');
+                    canvas.id = 'lectureDrawCanvas';
+                    canvas.className = 'lecture-draw-canvas';
+                    lectureBody.appendChild(canvas);
+                }
+
+                // 渲染数学公式
+                if (typeof renderMathInElement === 'function') {
+                    renderMathInElement(content, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\[', right: '\\]', display: true},
+                            {left: '\\(', right: '\\)', display: false}
+                        ],
+                        throwOnError: false
+                    });
+                }
             }
-            
-            // 渲染数学公式
-            if (typeof renderMathInElement === 'function') {
-                renderMathInElement(content, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '$', right: '$', display: false},
-                        {left: '\\[', right: '\\]', display: true},
-                        {left: '\\(', right: '\\)', display: false}
-                    ],
-                    throwOnError: false
-                });
-            }
-            
+
             // 显示讲义阅读器
             document.getElementById('lectureViewer').classList.add('show');
             document.body.classList.add('lecture-active');
@@ -12533,8 +12587,39 @@
             initLectureFontsize();
             // 重新初始化选择功能
             setTimeout(initLectureSelection, 150);
+            return true;
         }
-        
+
+        // 摘要正文按行分段：编号行和以冒号结尾的行作小标题，其余为段落
+        function abstractBodyHtml(abstractText) {
+            let html = `<div class="lecture-body">`;
+            const paragraphs = abstractText.split('\n').filter(p => p.trim());
+            paragraphs.forEach(p => {
+                // 检查是否是标题行（以数字开头或全大写等）
+                if (/^\d+[\.\、]/.test(p.trim()) || /^[一二三四五六七八九十]+[\.\、]/.test(p.trim())) {
+                    html += `<h3>${escapeHtml(p)}</h3>`;
+                } else if (p.trim().endsWith(':') || p.trim().endsWith('：')) {
+                    html += `<h3>${escapeHtml(p)}</h3>`;
+                } else {
+                    html += `<p>${escapeHtml(p)}</p>`;
+                }
+            });
+            return html + `</div>`;
+        }
+
+        // 摘要还在生成：按已收到的正文整篇重画（摘要篇幅短），末尾显示生成中提示，保持滚动位置
+        function renderAbstractStream(container, text) {
+            const scrollTop = container.scrollTop;
+            container.innerHTML = (text ? abstractBodyHtml(text) : '') + `
+                <div class="generating-indicator">
+                    <div class="generating-spinner"></div>
+                    <span>${i18n('toast_generating_abstract')}</span>
+                </div>`;
+            renderLectureMath(container);
+            container.scrollTop = scrollTop;
+            if (einkMode) einkUpdateLecturePages();
+        }
+
         function enterNotesFolder(type, docId) {
             let doc = appData.books.find(b => b.id === docId);
             if (!doc) return;
@@ -13030,7 +13115,8 @@
               features: ['lecture_open_generate', 'lecture_retry', 'lecture_regenerate', 'lecture_select_ask', 'abstract_select_ask',
                   'lecture_chat_send', 'lecture_chat_regen', 'lecture_chat_edit'] },
             { id: 'notebook', icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>',
-              features: ['notebook_lasso_recognize', 'notebook_handwriting_index'] },
+              features: ['notebook_lasso_recognize', 'notebook_lasso_ask', 'notebook_handwriting_index',
+                  'notebook_chat_send', 'notebook_chat_regen', 'notebook_chat_edit'] },
             { id: 'review', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
               features: ['review_add', 'review_next_stage', 'review_extra', 'review_regenerate', 'review_retry',
                   'review_restart', 'review_grade'] },
@@ -13095,6 +13181,7 @@
         function setAIFeatureRoute(groupId, feature, slot) {
             setAIFeatureSlots([feature], slot);
             renderAIRouteGroup(groupId);
+            renderAIRouteOverview();
         }
 
         function setAIRouteGroupSlot(groupId, slot) {
@@ -13102,6 +13189,15 @@
             if (!group) return;
             setAIFeatureSlots(group.features, slot);
             renderAIRouteGroup(groupId);
+            renderAIRouteOverview();
+        }
+
+        // 整个 AI 功能分配默认收起，只显示一行汇总；展开后才列出各模块
+        function toggleAIRouteSettings() {
+            const body = document.getElementById('aiRouteBody');
+            const expanded = body.style.display === 'none';
+            body.style.display = expanded ? '' : 'none';
+            document.getElementById('aiRouteArrow').classList.toggle('expanded', expanded);
         }
 
         // 同一时间只展开一个分组，避免列表过长
@@ -13118,11 +13214,17 @@
                 onclick="${onclickFor(slot)}">${escapeHtml(i18n('ai_route_slot_' + slot))}</button>`).join('')}</div>`;
         }
 
-        function aiRouteGroupHtml(group) {
-            const slots = group.features.map(getAIFeatureSlot);
+        // 一组功能当前所选的 API 及其统计，text 形如“N 项 · 主要 x · 次要 y”
+        function aiRouteSummary(features) {
+            const slots = features.map(getAIFeatureSlot);
             const counts = AI_API_SLOTS.map(slot => [slot, slots.filter(s => s === slot).length]).filter(([, n]) => n);
-            const summary = [i18n('ai_route_group_count', group.features.length),
+            const text = [i18n('ai_route_group_count', features.length),
                 ...counts.map(([slot, n]) => `${i18n('ai_route_slot_' + slot)} ${n}`)].join(' · ');
+            return { slots, counts, text };
+        }
+
+        function aiRouteGroupHtml(group) {
+            const { slots, counts, text: summary } = aiRouteSummary(group.features);
             const expanded = aiRouteExpandedGroup === group.id;
             let html = `
                 <div class="setting-item" onclick="toggleAIRouteGroup('${group.id}')">
@@ -13168,9 +13270,15 @@
             if (el && group) el.innerHTML = aiRouteGroupHtml(group);
         }
 
+        function renderAIRouteOverview() {
+            const el = document.getElementById('aiRouteOverview');
+            if (el) el.textContent = aiRouteSummary(AI_FEATURE_GROUPS.flatMap(g => g.features)).text;
+        }
+
         function renderAIRouteSettings() {
             const container = document.getElementById('aiRouteGroups');
             if (!container) return;
+            renderAIRouteOverview();
             document.getElementById('aiRouteApiSummary').textContent = AI_API_SLOTS.map(slot => {
                 const config = getAIApiConfig(slot);
                 return i18n('ai_route_api_entry', aiApiName(slot), isAIApiConfigured(config)
@@ -13736,9 +13844,9 @@
             return i18n('prompt_explain_selected_math', selectedText);
         }
 
-        async function requestTextSelectionAI(selectedText, userDesc, feature) {
+        async function requestTextSelectionAI(selectedText, userDesc, feature, onDelta) {
             const prompt = buildSelectionAskPrompt(selectedText, userDesc);
-            return await callAI(i18n('prompt_math_explain'), [{ role: 'user', content: prompt }], { feature })
+            return await callAI(i18n('prompt_math_explain'), [{ role: 'user', content: prompt }], { feature, onDelta })
                 || i18n('chat_no_ai_answer');
         }
 
@@ -13759,6 +13867,8 @@
             // 发送前消费本次选区；等待视觉请求期间允许创建新的套索，旧请求不会清掉它。
             einkPendingSelection = null;
 
+            const pending = showPendingDocAiComment(sel.page, sel.cx, sel.cy, userDesc);
+            const onDelta = chatStreamUpdater(() => pending?.body.isConnected ? pending.body : null);
             try {
                 const tip = userDesc
                     ? i18n('prompt_lasso_image_with_question', userDesc)
@@ -13767,14 +13877,56 @@
                     { type: 'image_url', image_url: { url: sel.image } },
                     { type: 'text', text: tip }
                 ] }];
-                const aiResponse = await callAI(i18n('prompt_math_explain'), messages, { feature: 'reader_lasso_ask' })
+                const aiResponse = await callAI(i18n('prompt_math_explain'), messages, { feature: 'reader_lasso_ask', onDelta })
                     || i18n('chat_no_ai_answer');
+                onDelta.stop();
+                pending?.remove();
                 addDocAiComment(docId, sel.page, sel.cx, sel.cy, aiResponse, userDesc);
                 showToast(i18n('toast_note_added'));
             } catch (err) {
+                onDelta.stop();
+                pending?.remove();
                 console.error(err);
                 showToast(i18n('toast_ai_request_failed') + (err && err.message ? err.message : ''));
             }
+        }
+
+        // 回答生成期间在圈选位置先放一个临时的 AI 标记和气泡，流式显示回答；完成后换成正式保存的标注。
+        // 返回 { body, remove }，该页尚未渲染时返回 null。
+        function showPendingDocAiComment(page, x, y, question) {
+            const placeholder = pageElements[page]?.placeholder;
+            if (!placeholder) return null;
+            const markerContainer = document.createElement('div');
+            markerContainer.style.cssText = `position:absolute;left:${x * 100}%;top:${y * 100}%;z-index:10;`;
+            const marker = document.createElement('div');
+            marker.className = 'annotation-marker ai-marker';
+            marker.style.position = 'relative';
+            marker.style.transform = 'translate(-50%, -50%)';
+            marker.textContent = '…';
+            const bubble = document.createElement('div');
+            bubble.className = 'note-bubble ai-bubble' + (y < 0.3 ? ' bubble-down' : '');
+            if (question) {
+                const qDiv = document.createElement('div');
+                qDiv.className = 'note-bubble-q';
+                qDiv.textContent = question;
+                bubble.appendChild(qDiv);
+            }
+            const body = document.createElement('div');
+            body.className = 'note-bubble-ai-body';
+            body.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+            bubble.appendChild(body);
+            markerContainer.appendChild(marker);
+            placeholder.appendChild(markerContainer);
+            // 墨水屏与正式标注一样改用 body 级浮层
+            if (einkMode) placeFloatingBubble(bubble, marker);
+            else marker.appendChild(bubble);
+            return {
+                body,
+                remove: () => {
+                    markerContainer.remove();
+                    bubble.remove();
+                }
+            };
         }
 
         // 以 note 标注形式保存 AI 评论（ai:true），复用计数圆点 marker + 悬浮框渲染
@@ -17489,9 +17641,14 @@
                         return syncTimestamp(cloudPage.updatedAt || cloudPage.createdAt) >
                             localNotebookUpdatedAt ? cloudPage : null;
                     }
-                    return syncTimestamp(localPage.updatedAt || localPage.createdAt) >
+                    const page = syncTimestamp(localPage.updatedAt || localPage.createdAt) >
                         syncTimestamp(cloudPage.updatedAt || cloudPage.createdAt)
                         ? localPage : cloudPage;
+                    // 页面上的笔记 AI 对话按 chatUpdatedAt 单独取新，不受页面内容时间戳影响
+                    const chatSource = (Number(localPage.chatUpdatedAt) || 0) > (Number(cloudPage.chatUpdatedAt) || 0)
+                        ? localPage : cloudPage;
+                    return chatSource === page || chatSource.chatUpdatedAt === undefined ? page
+                        : { ...page, chatHistory: chatSource.chatHistory, chatUpdatedAt: chatSource.chatUpdatedAt };
                 }).filter(Boolean);
                 const localPageOrder = localItem?.pages || [];
                 for (let localIndex = 0; localIndex < localPageOrder.length; localIndex++) {
@@ -19358,10 +19515,14 @@
         let readerChatDoc = null;
         const readerChatSyncToasts = new Map();
 
-        // chatDoc 是对话本身：阅读页文档、错题（question）或讲义阅读器内容（lecture）。
+        // chatDoc 是对话本身：阅读页文档、错题（question）、讲义阅读器内容（lecture）或笔记本的一页（notebookPage）。
         // 返回保存这段对话记录的数据对象，每次按稳定 id 重新查找，同步替换对象后仍能写回。
         function getReaderChatDoc(chatDoc) {
             if (chatDoc?.lecture) return getLectureChatOwner(chatDoc.lecture);
+            if (chatDoc?.notebookPage) {
+                const { notebookId, pageId } = chatDoc.notebookPage;
+                return (nbGetNotebook(notebookId)?.pages || []).find(page => page?.id === pageId);
+            }
             if (chatDoc?.question) {
                 const { folderId, taskId, originalQuestionIndex } = chatDoc.question;
                 const data = getExercisesData();
@@ -19598,6 +19759,33 @@
             return '<p>' + html + '</p>';
         }
 
+        // 流式回答：返回作为 callAI 的 onDelta，把已收到的全文画进“正在回答”的元素。
+        // 合并更新，普通屏最多每 0.3 秒、墨水屏每 1 秒重画一次；所在聊天列表原本停在底部时跟着滚到底。
+        // getTarget 每次重新查找元素，元素已移除时不再重画；回答结束后调用 stop() 取消尚未执行的重画。
+        function chatStreamUpdater(getTarget, toHtml = renderChatMarkdownLatex, renderMath = true) {
+            let latest = '';
+            let timer = null;
+            const update = text => {
+                latest = text;
+                if (timer) return;
+                timer = setTimeout(() => {
+                    timer = null;
+                    const target = getTarget();
+                    if (!target) return;
+                    const scroller = target.closest('.chat-container');
+                    const atBottom = scroller && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40;
+                    target.innerHTML = toHtml(latest);
+                    if (renderMath) renderLectureMath(target);
+                    if (atBottom) scroller.scrollTop = scroller.scrollHeight;
+                }, einkMode ? 1000 : 300);
+            };
+            update.stop = () => {
+                clearTimeout(timer);
+                timer = null;
+            };
+            return update;
+        }
+
         // ==================== 聊天消息：操作按钮 & 选区引用 ====================
         let chatSelectedText = '';
         let chatSelectionRange = null;
@@ -19810,18 +19998,19 @@
             return `${base}\n\n${i18n('prompt_wrong_background', background.join('\n'))}`;
         }
 
-        // 讲义问 AI 与错题问 AI 一样不带阅读页的当前页笔记，其余提示词与阅读问 AI 相同。
+        // 讲义问 AI、笔记 AI 对话与错题问 AI 一样不带阅读页的当前页笔记，其余提示词与阅读问 AI 相同。
         function buildReaderChatSystemPrompt(doc) {
             if (doc.question) return buildWrongChatSystemPrompt(doc);
-            if (doc.lecture) return `${i18n('prompt_math_ai')}\n\n${i18n('prompt_help_instruction')}\n${i18n('prompt_workflow')}`;
+            if (doc.lecture || doc.notebookPage) return `${i18n('prompt_math_ai')}\n\n${i18n('prompt_help_instruction')}\n${i18n('prompt_workflow')}`;
             const notes = getDocAnnotations(doc.id, currentPage, 'note');
             const notesSummary = notes.map(n => n.text).filter(Boolean).join('; ');
             return `${i18n('prompt_math_ai')}\n\n${i18n('prompt_user_notes')}${notesSummary || i18n('prompt_none')}\n${i18n('prompt_help_instruction')}\n${i18n('prompt_workflow')}`;
         }
 
         // 构建发送给 AI 的消息：题干和旧 AI 解析常驻系统提示，这里只把手写图片附在首轮请求。
-        // 讲义问 AI 每轮都把讲义正文作为附件放在最后一条用户消息前，与阅读问 AI 每轮附带当前页相同。
-        function buildReaderChatApiMessages(history, doc = readerChatDoc, lectureText = '') {
+        // 讲义问 AI 每轮都把讲义正文作为附件放在最后一条用户消息前，与阅读问 AI 每轮附带当前页相同；
+        // 笔记 AI 对话每轮附上这一页笔记的图片（pageImage）。
+        function buildReaderChatApiMessages(history, doc = readerChatDoc, lectureText = '', pageImage = null) {
             const messages = history.map(h => ({
                 role: h.role,
                 content: h.quote ? `${i18n('chat_quote_prefix')}${h.quote}\n\n${h.content}` : h.content
@@ -19831,6 +20020,15 @@
                 messages[lastIndex] = {
                     role: 'user',
                     content: `${i18n('prompt_lecture_chat_attachment', doc.title, lectureText)}\n\n---\n\n${messages[lastIndex].content}`
+                };
+            }
+            if (pageImage && messages[lastIndex]?.role === 'user') {
+                messages[lastIndex] = {
+                    role: 'user',
+                    content: [
+                        { type: 'image_url', image_url: { url: pageImage } },
+                        { type: 'text', text: `${i18n('prompt_notebook_chat_attachment', doc.title)}\n\n---\n\n${messages[lastIndex].content}` }
+                    ]
                 };
             }
             // 首轮状态只保存在当前聊天对象中，不写入消息、错题数据或本地存储。
@@ -19871,12 +20069,24 @@
             resendReaderChatFromIndex(index, 'edit');
         }
 
-        // mode: 'edit' 编辑消息后重新回答，'regen' 重新生成回答；错题问 AI、讲义问 AI 与文档对话分别计入不同功能
+        // 错题问 AI、讲义问 AI、笔记 AI 对话与文档对话分别计入不同功能；action 为 send / regen / edit
+        function readerChatFeature(doc, action) {
+            const prefix = doc.question ? 'wrong_chat_' : (doc.lecture ? 'lecture_chat_'
+                : (doc.notebookPage ? 'notebook_chat_' : 'reader_chat_'));
+            return prefix + action;
+        }
+
+        // 回答流式画进对话弹窗里“正在回答”的气泡；切到别的对话后不再更新
+        function readerChatStreamUpdater(chatDoc) {
+            return chatStreamUpdater(() => readerChatDoc?.id === chatDoc.id
+                ? document.querySelector('#readerChatLoading .chat-bubble') : null);
+        }
+
+        // mode: 'edit' 编辑消息后重新回答，'regen' 重新生成回答
         async function resendReaderChatFromIndex(userMsgIndex, mode) {
             const currentDoc = readerChatDoc;
             if (!currentDoc) return;
-            const feature = (currentDoc.question ? 'wrong_chat_' : (currentDoc.lecture ? 'lecture_chat_' : 'reader_chat_')) +
-                (mode === 'edit' ? 'edit' : 'regen');
+            const feature = readerChatFeature(currentDoc, mode === 'edit' ? 'edit' : 'regen');
             let history = loadReaderChatHistory(currentDoc);
 
             // Build system prompt
@@ -19891,8 +20101,9 @@
                 } catch (e) { console.error('切出当前页PDF失败:', e); }
             }
             const lectureText = currentDoc.lecture ? await loadLectureChatContent(currentDoc.lecture) : '';
+            const pageImage = currentDoc.notebookPage ? await nbCaptureReviewImage(currentDoc.notebookPage) : null;
 
-            const apiMessages = buildReaderChatApiMessages(history, currentDoc, lectureText);
+            const apiMessages = buildReaderChatApiMessages(history, currentDoc, lectureText, pageImage);
 
             const container = document.getElementById('readerChatContainer');
             const loadingDiv = document.createElement('div');
@@ -19907,8 +20118,9 @@
             container.appendChild(loadingDiv);
             container.scrollTop = container.scrollHeight;
 
+            const onDelta = readerChatStreamUpdater(currentDoc);
             try {
-                const result = await callReaderAI(systemPrompt, apiMessages, { pdfAttachment, feature });
+                const result = await callReaderAI(systemPrompt, apiMessages, { pdfAttachment, feature, onDelta });
                 if (readerChatDoc?.id === currentDoc.id) document.getElementById('readerChatLoading')?.remove();
                 if (result) {
                     history.push({ role: 'assistant', content: result });
@@ -19918,6 +20130,8 @@
             } catch (err) {
                 if (readerChatDoc?.id === currentDoc.id) document.getElementById('readerChatLoading')?.remove();
                 showToast(i18n('toast_regen_failed') + err.message);
+            } finally {
+                onDelta.stop();
             }
         }
 
@@ -19974,8 +20188,9 @@
 
             let history = loadReaderChatHistory(currentDoc);
             if (history.length === 0) {
-                // Auto-capture screenshot and generate greeting（讲义问 AI 不截图，提问时附上讲义正文）
-                const screenshot = currentDoc.question || currentDoc.lecture ? null : captureCurrentPageScreenshot();
+                // Auto-capture screenshot and generate greeting（讲义问 AI、笔记 AI 对话不截阅读页，提问时附上各自的内容）
+                const screenshot = currentDoc.question || currentDoc.lecture || currentDoc.notebookPage
+                    ? null : captureCurrentPageScreenshot();
                 const notes = getDocAnnotations(currentDoc.id, currentPage, 'note');
                 const notesSummary = notes.map(n => n.text).filter(Boolean).join('; ');
 
@@ -20025,11 +20240,12 @@
                 }
             }
             const lectureText = currentDoc.lecture ? await loadLectureChatContent(currentDoc.lecture) : '';
+            const pageImage = currentDoc.notebookPage ? await nbCaptureReviewImage(currentDoc.notebookPage) : null;
 
             // Build system prompt with context
             const systemPrompt = buildReaderChatSystemPrompt(currentDoc);
 
-            const apiMessages = buildReaderChatApiMessages(history, currentDoc, lectureText);
+            const apiMessages = buildReaderChatApiMessages(history, currentDoc, lectureText, pageImage);
 
             // Show typing indicator
             const container = document.getElementById('readerChatContainer');
@@ -20050,9 +20266,10 @@
             container.appendChild(loadingDiv);
             container.scrollTop = container.scrollHeight;
 
+            const onDelta = readerChatStreamUpdater(currentDoc);
             try {
-                const feature = currentDoc.question ? 'wrong_chat_send' : (currentDoc.lecture ? 'lecture_chat_send' : 'reader_chat_send');
-                const result = await callReaderAI(systemPrompt, apiMessages, { pdfAttachment, feature });
+                const feature = readerChatFeature(currentDoc, 'send');
+                const result = await callReaderAI(systemPrompt, apiMessages, { pdfAttachment, feature, onDelta });
                 if (readerChatDoc?.id === currentDoc.id) document.getElementById('readerChatLoading')?.remove();
 
                 if (result) {
@@ -20079,27 +20296,97 @@
                 history.push({ role: 'assistant', content: i18n('request_failed') + (e.message || i18n('unknown_error')) });
                 saveReaderChatHistory(currentDoc, history);
                 renderReaderChatHistory(currentDoc.id);
+            } finally {
+                onDelta.stop();
             }
         }
 
         // ==================== 通用AI调用 ====================
         // options.feature 为 AI 功能分配中的功能 id，决定使用主要 / 次要 / 备用哪一套 API
+        // options.onDelta 存在时走流式请求，每收到一段正文就以本次请求已收到的全文回调；返回值仍是全文
         async function callAI(systemPrompt, messages, options = {}) {
             const [config, fallbackConfig] = resolveAIRoute(options.feature);
             if (!config) throw new Error(i18n('configure_api_first'));
             try {
-                return await doAIRequest(config, systemPrompt, messages, options);
+                return await doAIRequestPreferStream(config, systemPrompt, messages, options);
             } catch (e) {
                 console.error(`${config.slot} API 调用失败:`, e);
                 if (!fallbackConfig) throw e;
                 showToast(i18n('toast_api_failover', aiApiName(config.slot), aiApiName(fallbackConfig.slot)));
                 try {
-                    return await doAIRequest(fallbackConfig, systemPrompt, messages, options);
+                    return await doAIRequestPreferStream(fallbackConfig, systemPrompt, messages, options);
                 } catch (e2) {
                     console.error(`${fallbackConfig.slot} API 也失败:`, e2);
                     throw new Error(i18n('all_apis_failed'));
                 }
             }
+        }
+
+        // 流式请求在收到任何正文之前就失败（例如服务端没有流式接口）时，同一个 API 改用普通请求再试一次
+        async function doAIRequestPreferStream(config, systemPrompt, messages, options) {
+            if (!options.onDelta) return await doAIRequest(config, systemPrompt, messages, options);
+            let received = false;
+            try {
+                return await doAIRequest(config, systemPrompt, messages, {
+                    ...options,
+                    onDelta: text => { received = true; options.onDelta(text); }
+                });
+            } catch (e) {
+                if (received) throw e;
+                console.warn(`${config.slot} API 流式请求失败，改用普通请求:`, e);
+                return await doAIRequest(config, systemPrompt, messages, { ...options, onDelta: null });
+            }
+        }
+
+        // 读取流式响应。OpenAI 兼容接口、Claude 和 Gemini（alt=sse）都返回 SSE，每个事件的 data 是一段 JSON；
+        // deltaOf(event) 取出这一段新增的正文，每收到新正文就以已收到的全文调用 onDelta。
+        // 服务端忽略流式参数、直接返回 JSON 时，用 textOf(data) 取出全文。
+        async function readAIStream(response, onDelta, deltaOf, textOf) {
+            if (/json/i.test(response.headers.get('content-type') || '')) {
+                return textOf(await response.json());
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let text = '';
+            let buffer = '';
+            let dataLines = [];
+            const dispatch = () => {
+                const payload = dataLines.join('\n');
+                dataLines = [];
+                if (!payload || payload === '[DONE]') return;
+                let event;
+                try { event = JSON.parse(payload); } catch (e) { return; }
+                // 生成中途出错时服务端在流里发 error 事件（例如 Claude 的 overloaded_error）
+                if (event.error) throw new Error(event.error.message || JSON.stringify(event.error));
+                const delta = deltaOf(event);
+                if (delta) {
+                    text += delta;
+                    onDelta(text);
+                }
+            };
+            // 空行结束一个事件；event:、id: 和以冒号开头的保活注释行都不需要
+            const handleLine = line => {
+                if (line.endsWith('\r')) line = line.slice(0, -1);
+                if (!line) dispatch();
+                else if (line.startsWith('data:')) dataLines.push(line.slice(line.startsWith('data: ') ? 6 : 5));
+            };
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    lines.forEach(handleLine);
+                }
+                buffer += decoder.decode();
+                if (buffer) handleLine(buffer);
+                dispatch();
+            } catch (e) {
+                reader.cancel().catch(() => {});
+                throw e;
+            }
+            return text || null;
         }
 
         // 每次 AI 请求允许返回的最大 token 数
@@ -20209,7 +20496,7 @@
                     ...finalMessages
                 ],
                 temperature: options.temperature || 0.7,
-                stream: options.stream || false
+                stream: !!(options.stream || options.onDelta)
             };
 
             const { response, errText } = await sendAIRequestWithTokenRetry(config, options, maxTokens => {
@@ -20231,9 +20518,12 @@
             if (options.stream) {
                 return response;
             }
-            
-            const data = await response.json();
-            return data.choices?.[0]?.message?.content || null;
+
+            const textOf = data => data.choices?.[0]?.message?.content || null;
+            if (options.onDelta) {
+                return await readAIStream(response, options.onDelta, event => event.choices?.[0]?.delta?.content, textOf);
+            }
+            return textOf(await response.json());
         }
 
         // 把 PDF 文本提取，作为"附件文本"拼到 messages 最后一条 user 内容前
@@ -20279,6 +20569,7 @@
                 messages,
             };
             if (systemPrompt) body.system = systemPrompt;
+            if (options.onDelta) body.stream = true;
             const { response, errText } = await sendAIRequestWithTokenRetry(config, options, maxTokens => {
                 body.max_tokens = maxTokens;
                 return fetch(config.url, {
@@ -20295,11 +20586,13 @@
             if (!response.ok) {
                 throw new Error(i18n('claude_api_error', response.status, errText));
             }
-            const data = await response.json();
-            if (Array.isArray(data.content)) {
-                return data.content.filter(x => x.type === 'text').map(x => x.text).join('');
+            const textOf = data => Array.isArray(data.content)
+                ? data.content.filter(x => x.type === 'text').map(x => x.text).join('') : null;
+            if (options.onDelta) {
+                return await readAIStream(response, options.onDelta, event =>
+                    event.type === 'content_block_delta' && event.delta?.type === 'text_delta' ? event.delta.text : '', textOf);
             }
-            return null;
+            return textOf(await response.json());
         }
 
         // 把 PDF 附件嵌入到 Claude messages 最后一条 user 消息里（document 块）
@@ -20416,7 +20709,8 @@
                 body.systemInstruction = { parts: [{ text: String(systemPrompt) }] };
             }
 
-            const url = base + '/models/' + encodeURIComponent(modelName) + ':generateContent?key=' + encodeURIComponent(config.key);
+            const method = options.onDelta ? ':streamGenerateContent?alt=sse&key=' : ':generateContent?key=';
+            const url = base + '/models/' + encodeURIComponent(modelName) + method + encodeURIComponent(config.key);
             const { response, errText } = await sendAIRequestWithTokenRetry(config, options, maxTokens => {
                 body.generationConfig.maxOutputTokens = maxTokens;
                 return fetch(url, {
@@ -20428,17 +20722,21 @@
             if (!response.ok) {
                 throw new Error(i18n('api_error', response.status, errText));
             }
-            const data = await response.json();
-            const candidate = data.candidates?.[0];
-            const finishReason = candidate?.finishReason;
-            if (finishReason && finishReason !== 'STOP') {
-                console.warn('Gemini finishReason:', finishReason, '— 输出可能被截断');
-            }
-            const parts = candidate?.content?.parts;
-            if (Array.isArray(parts) && parts.length > 0) {
-                return parts.map(p => p.text || '').join('');
-            }
-            return null;
+            // 流式时每个事件也是这种结构，只含新增的一段正文，最后一段带 finishReason
+            const textOf = data => {
+                const candidate = data.candidates?.[0];
+                const finishReason = candidate?.finishReason;
+                if (finishReason && finishReason !== 'STOP') {
+                    console.warn('Gemini finishReason:', finishReason, '— 输出可能被截断');
+                }
+                const parts = candidate?.content?.parts;
+                if (Array.isArray(parts) && parts.length > 0) {
+                    return parts.map(p => p.text || '').join('');
+                }
+                return null;
+            };
+            if (options.onDelta) return await readAIStream(response, options.onDelta, textOf, textOf);
+            return textOf(await response.json());
         }
 
         // 构造 Gemini contents，带 PDF。超过 18MB 走 Files API。
@@ -21073,6 +21371,10 @@ ${i18n('prompt_outline_gen')}`;
             if (chapter.status === 'generating') return; // 正在生成中，防止重复调用
 
             chapter.status = 'generating';
+            // 本次生成已收到的正文只放内存，讲义阅读器据此边生成边显示
+            const streamKey = lecContentKey(bookId, chapter.id);
+            const stream = { text: '' };
+            lectureStreams.set(streamKey, stream);
             saveData();
 
             // 如果用户正在查看，立刻刷新为"生成中"状态
@@ -21103,7 +21405,13 @@ ${i18n('prompt_lecture_gen')}`;
 
                 const result = await callAI(systemPrompt, [{ role: 'user', content: userMessage }], {
                     feature,
-                    pdfAttachment
+                    pdfAttachment,
+                    onDelta: text => {
+                        stream.text = text;
+                        if (currentLecture && currentLecture.bookId === bookId && currentLecture.chapterIndex === chapterIndex) {
+                            scheduleLectureStreamRender();
+                        }
+                    }
                 });
 
                 const contentText = result || i18n('toast_content_gen_failed');
@@ -21123,9 +21431,9 @@ ${i18n('prompt_lecture_gen')}`;
                 triggerSyncOnFileChange(lecContentKey(bookId, chapter.id), 'lecture_upload');
                 sendNotification(i18n('toast_lecture_synced'), chapter.title);
 
-                // 如果正在查看这个讲义，刷新显示
+                // 如果正在查看这个讲义，刷新显示；读者可能已经边生成边往下读，停在当前位置
                 if (currentLecture && currentLecture.bookId === bookId && currentLecture.chapterIndex === chapterIndex) {
-                    displayLectureContent();
+                    displayLectureContent({ keepScroll: true });
                 }
 
                 renderNotesPage();
@@ -21143,6 +21451,7 @@ ${i18n('prompt_lecture_gen')}`;
                 }
                 renderNotesPage();
             } finally {
+                if (lectureStreams.get(streamKey) === stream) lectureStreams.delete(streamKey);
                 activeLectureGenerationCount = Math.max(0, activeLectureGenerationCount - 1);
                 if (activeLectureGenerationCount === 0 && !r2SyncInProgress && r2PendingSyncQueue.length > 0) {
                     const lectureUploadIndex = r2PendingSyncQueue.findIndex(item =>
@@ -21157,6 +21466,9 @@ ${i18n('prompt_lecture_gen')}`;
 
         // 讲义阅读器状态
         let currentLecture = null;
+        // 正在生成的讲义章节已收到的正文（只在内存中，不写入 appData）：lecContentKey → { text }
+        const lectureStreams = new Map();
+        let _lectureStreamRenderTimer = null;
 
         async function openLecture(bookId, chapterIndex) {
             let lectureData = appData.lectures?.[bookId];
@@ -21215,14 +21527,23 @@ ${i18n('prompt_lecture_gen')}`;
             }
         }
 
-        async function displayLectureContent() {
+        // options.keepScroll：渲染完停在当前滚动位置，不恢复上次保存的阅读位置
+        async function displayLectureContent(options = {}) {
             if (!currentLecture) return;
             // 每次重新获取chapter，避免引用过期
             const lectureData = appData.lectures[currentLecture.bookId];
             const chapter = lectureData.chapters[currentLecture.chapterIndex];
             const container = document.getElementById('lectureViewerContent');
-            
+            const keptScrollTop = options.keepScroll ? container.scrollTop : null;
+
             if (chapter.status === 'generating') {
+                // 已经收到部分正文时边生成边显示，否则显示生成中提示
+                const streamKey = lecContentKey(currentLecture.bookId, chapter.id);
+                const streamText = lectureStreams.get(streamKey)?.text;
+                if (streamText) {
+                    renderLectureStream(container, streamKey, streamText);
+                    return;
+                }
                 container.innerHTML = `
                     <div class="generating-indicator">
                         <div class="generating-spinner"></div>
@@ -21288,50 +21609,8 @@ ${i18n('prompt_lecture_gen')}`;
                 return;
             }
             
-            // 渲染Markdown内容，保护LaTeX公式
-            let content = contentText;
-            
-            // 保护LaTeX公式，避免被Markdown处理破坏
-            const latexBlocks = [];
-            const latexInlines = [];
-            
-            // 保护 $$ ... $$ 块级公式
-            content = content.replace(/\$\$([\s\S]*?)\$\$/g, (match, p1) => {
-                latexBlocks.push(p1.trim());
-                return `%%LATEXBLOCK${latexBlocks.length - 1}%%`;
-            });
-            
-            // 保护 $ ... $ 行内公式 (不跨行)
-            content = content.replace(/\$([^\$\n]+?)\$/g, (match, p1) => {
-                latexInlines.push(p1.trim());
-                return `%%LATEXINLINE${latexInlines.length - 1}%%`;
-            });
-            
-            // 处理Markdown
-            let html = content
-                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-                .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/^- (.*$)/gm, '<li>$1</li>')
-                .replace(/^(\d+)\. (.*$)/gm, '<li>$2</li>')
-                .replace(/\n\n/g, '</p><p>')
-                .replace(/\n/g, '<br>');
-            
-            // 恢复LaTeX公式
-            html = html.replace(/%%LATEXBLOCK(\d+)%%/g, (match, idx) => {
-                const latex = latexBlocks[parseInt(idx)];
-                return `</p><div class="latex-display">$$${latex}$$</div><p>`;
-            });
-            
-            html = html.replace(/%%LATEXINLINE(\d+)%%/g, (match, idx) => {
-                const latex = latexInlines[parseInt(idx)];
-                return `$${latex}$`;
-            });
-            
-            container.innerHTML = '<div class="lecture-body"><p>' + html + '</p></div>';
-            
+            container.innerHTML = '<div class="lecture-body">' + lectureMarkdownHtml(contentText) + '</div>';
+
             // 添加绘制canvas
             const lectureBody = container.querySelector('.lecture-body');
             if (lectureBody) {
@@ -21354,13 +21633,129 @@ ${i18n('prompt_lecture_gen')}`;
             // 恢复滚动位置（程序化滚动，不计入阅读进度）
             if (einkMode) {
                 einkLectureCurrentPage = 0;
-                setLectureScrollTop(container, 0);
+                setLectureScrollTop(container, keptScrollTop ?? 0);
                 setTimeout(function() { einkUpdateLecturePages(); }, 100);
             } else {
-                setLectureScrollTop(container, chapter.scrollPosition || 0);
+                setLectureScrollTop(container, keptScrollTop ?? (chapter.scrollPosition || 0));
             }
         }
-        
+
+        // 讲义 Markdown 转 HTML（外层 <p>），先保护 LaTeX 公式，避免被 Markdown 处理破坏
+        function lectureMarkdownHtml(contentText) {
+            let content = contentText;
+            const latexBlocks = [];
+            const latexInlines = [];
+
+            // 保护 $$ ... $$ 块级公式
+            content = content.replace(/\$\$([\s\S]*?)\$\$/g, (match, p1) => {
+                latexBlocks.push(p1.trim());
+                return `%%LATEXBLOCK${latexBlocks.length - 1}%%`;
+            });
+
+            // 保护 $ ... $ 行内公式 (不跨行)
+            content = content.replace(/\$([^\$\n]+?)\$/g, (match, p1) => {
+                latexInlines.push(p1.trim());
+                return `%%LATEXINLINE${latexInlines.length - 1}%%`;
+            });
+
+            // 处理Markdown
+            let html = content
+                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^- (.*$)/gm, '<li>$1</li>')
+                .replace(/^(\d+)\. (.*$)/gm, '<li>$2</li>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+
+            // 恢复LaTeX公式
+            html = html.replace(/%%LATEXBLOCK(\d+)%%/g, (match, idx) => {
+                const latex = latexBlocks[parseInt(idx)];
+                return `</p><div class="latex-display">$$${latex}$$</div><p>`;
+            });
+
+            html = html.replace(/%%LATEXINLINE(\d+)%%/g, (match, idx) => {
+                const latex = latexInlines[parseInt(idx)];
+                return `$${latex}$`;
+            });
+
+            return '<p>' + html + '</p>';
+        }
+
+        // 流式正文中已经完整、可以定稿的长度：截到最后一个空行为止，且该处不在 $$ 公式块内
+        function lectureStreamStableLength(text) {
+            for (let cut = text.lastIndexOf('\n\n'); cut >= 0; cut = text.lastIndexOf('\n\n', cut - 1)) {
+                if ((text.slice(0, cut).match(/\$\$/g) || []).length % 2 === 0) return cut + 2;
+            }
+            return 0;
+        }
+
+        // 生成中的讲义边收边显示：完整的段落渲染一次后保留，之后只追加新完成的段落、重画末尾未完成的一段，
+        // 长讲义不必每次整篇重排和重新渲染公式，已显示部分的滚动位置和选区也不受影响。
+        function renderLectureStream(container, key, text) {
+            let body = container.querySelector('.lecture-body');
+            // 换了章节，或主要 API 中途失败、备用 API 从头重新生成时整段重建
+            if (!body || body._streamKey !== key || !text.startsWith(body._streamDoneText)) {
+                container.innerHTML = `
+                    <div class="lecture-body"><div class="lecture-stream-tail"></div></div>
+                    <div class="generating-indicator">
+                        <div class="generating-spinner"></div>
+                        <span>${i18n('generating_lecture_content')}</span>
+                    </div>`;
+                body = container.querySelector('.lecture-body');
+                body._streamKey = key;
+                body._streamDoneText = '';
+            }
+            const tail = body.querySelector('.lecture-stream-tail');
+            const doneLength = lectureStreamStableLength(text);
+            if (doneLength > body._streamDoneText.length) {
+                const chunk = text.slice(body._streamDoneText.length, doneLength).replace(/^\n+|\n+$/g, '');
+                if (chunk.trim()) {
+                    const block = document.createElement('div');
+                    block.innerHTML = lectureMarkdownHtml(chunk);
+                    body.insertBefore(block, tail);
+                    renderLectureMath(block);
+                }
+                body._streamDoneText = text.slice(0, doneLength);
+            }
+            tail.innerHTML = lectureMarkdownHtml(text.slice(doneLength));
+            renderLectureMath(tail);
+            if (einkMode) einkUpdateLecturePages();
+        }
+
+        // 合并流式更新再重画：普通屏最多每 0.3 秒一次，墨水屏每 1 秒一次
+        function scheduleLectureStreamRender() {
+            if (_lectureStreamRenderTimer) return;
+            _lectureStreamRenderTimer = setTimeout(() => {
+                _lectureStreamRenderTimer = null;
+                renderCurrentLectureStream();
+            }, einkMode ? 1000 : 300);
+        }
+
+        // 讲义阅读器当前显示的书籍讲义章节、论文摘要或课堂笔记还在生成时，按已收到的正文重画
+        function renderCurrentLectureStream() {
+            const container = document.getElementById('lectureViewerContent');
+            if (currentLecture?.isPaperAbstract) {
+                const stream = abstractStreams.get(currentLecture.paperId);
+                if (stream) renderAbstractStream(container, stream.text);
+                return;
+            }
+            if (currentLecture?.streamMaterialId) {
+                // 与课堂笔记正式显示时一样去掉来源标记 {ref:…}
+                const text = classroomNoteStreams.get(currentLecture.streamMaterialId)?.text.replace(/\{ref:[^}]+\}/g, '');
+                if (text) renderLectureStream(container, 'classroom_' + currentLecture.streamMaterialId, text);
+                return;
+            }
+            const chapter = currentLecture?.bookId
+                ? appData.lectures?.[currentLecture.bookId]?.chapters[currentLecture.chapterIndex] : null;
+            if (chapter?.status !== 'generating') return;
+            const key = lecContentKey(currentLecture.bookId, chapter.id);
+            const text = lectureStreams.get(key)?.text;
+            if (text) renderLectureStream(container, key, text);
+        }
+
         function renderLectureMath(element) {
             if (window.renderMathInElement) {
                 try {
@@ -21502,6 +21897,8 @@ ${i18n('prompt_lecture_gen')}`;
             if (currentLecture.isClassroomNote) { updateClassroomNoteProgress(); return; }
             if (currentLecture.isPaperAbstract) return;
             if (!currentLecture.bookId || !appData.lectures[currentLecture.bookId]) return;
+            // 正文还在边生成边显示，高度一直在变，生成完成前不计算阅读进度
+            if (appData.lectures[currentLecture.bookId].chapters[currentLecture.chapterIndex]?.status === 'generating') return;
             const container = document.getElementById('lectureViewerContent');
             const scrollHeight = container.scrollHeight - container.clientHeight;
             const progress = scrollHeight > 0 ? Math.round((container.scrollTop / scrollHeight) * 100) : 100;
@@ -22935,26 +23332,36 @@ ${i18n('prompt_lecture_gen')}`;
             hideLectureSelectionMenu();
 
             showToast(i18n('toast_asking_ai'));
+            // 回答先作为“正在回答”的笔记插在选区后面，随后流式更新
+            const noteEl = insertLectureNote('', savedRange);
+            const onDelta = chatStreamUpdater(() => noteEl?.isConnected ? noteEl : null);
 
             try {
-                const aiResponse = await requestTextSelectionAI(savedText, userDesc, feature);
-
-                insertLectureNote(aiResponse, savedRange);
+                const aiResponse = await requestTextSelectionAI(savedText, userDesc, feature, onDelta);
+                onDelta.stop();
+                if (noteEl) {
+                    noteEl.innerHTML = renderChatMarkdownLatex(aiResponse);
+                    renderLectureMath(noteEl);
+                }
                 showToast(i18n('toast_note_added'));
             } catch (err) {
+                onDelta.stop();
+                noteEl?.remove();
                 console.error(err);
                 showToast(i18n('toast_ai_request_failed') + err.message);
             }
         }
 
+        // noteText 为空时插入“正在回答”的占位，返回插入的元素（没能插入时为 null）
         function insertLectureNote(noteText, range) {
             if (!range) range = lectureSelectionRange;
-            if (!range) return;
+            if (!range) return null;
 
             const noteEl = document.createElement('div');
             noteEl.className = 'lecture-note-mark';
             // 用和聊天气泡相同的Markdown+LaTeX渲染管线
-            noteEl.innerHTML = renderChatMarkdownLatex(noteText);
+            noteEl.innerHTML = noteText ? renderChatMarkdownLatex(noteText)
+                : '<div class="chat-typing"><span></span><span></span><span></span></div>';
             // KaTeX渲染
             renderLectureMath(noteEl);
 
@@ -22998,6 +23405,7 @@ ${i18n('prompt_lecture_gen')}`;
             window.getSelection().removeAllRanges();
             lectureSelectedText = '';
             lectureSelectionRange = null;
+            return noteEl.isConnected ? noteEl : null;
         }
 
         // ==================== 讲义与书籍联动 ====================
@@ -23092,34 +23500,39 @@ ${i18n('prompt_lecture_gen')}`;
                 prompt = i18n('prompt_explain_selected_math', savedText);
             }
 
+            // 在选中文本下方先插入“正在回答”的AI回答笔记，随后流式更新
+            const qDiv = document.getElementById('exerciseDoingQuestion');
+            const noteEl = document.createElement('div');
+            noteEl.className = 'lecture-note-mark';
+            noteEl.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+
+            // 找到插入位置：选区结束处的块级祖先之后
+            let insertPoint = exerciseSelectionRange ? exerciseSelectionRange.endContainer : null;
+            while (insertPoint && insertPoint.nodeType !== 1) {
+                insertPoint = insertPoint.parentNode;
+            }
+            while (insertPoint && insertPoint !== qDiv && !['P', 'DIV', 'LI', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4'].includes(insertPoint.tagName)) {
+                insertPoint = insertPoint.parentNode;
+            }
+            if (insertPoint === qDiv || !insertPoint) {
+                qDiv.appendChild(noteEl);
+            } else if (insertPoint && insertPoint.parentNode) {
+                insertPoint.parentNode.insertBefore(noteEl, insertPoint.nextSibling);
+            }
+            const onDelta = chatStreamUpdater(() => noteEl.isConnected ? noteEl : null);
+
             try {
                 const feature = exDoingState?.isWrong ? 'wrong_select_ask' : 'exercise_select_ask';
-                const aiResponse = await callAI(i18n('prompt_math_explain'), [{ role: 'user', content: prompt }], { feature })
+                const aiResponse = await callAI(i18n('prompt_math_explain'), [{ role: 'user', content: prompt }], { feature, onDelta })
                     || i18n('chat_no_ai_answer');
-
-                // 在选中文本下方插入AI回答笔记
-                const qDiv = document.getElementById('exerciseDoingQuestion');
-                const noteEl = document.createElement('div');
-                noteEl.className = 'lecture-note-mark';
+                onDelta.stop();
                 noteEl.innerHTML = renderChatMarkdownLatex(aiResponse);
                 renderLectureMath(noteEl);
 
-                // 找到插入位置：选区结束处的块级祖先之后
-                let insertPoint = exerciseSelectionRange ? exerciseSelectionRange.endContainer : null;
-                while (insertPoint && insertPoint.nodeType !== 1) {
-                    insertPoint = insertPoint.parentNode;
-                }
-                while (insertPoint && insertPoint !== qDiv && !['P', 'DIV', 'LI', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4'].includes(insertPoint.tagName)) {
-                    insertPoint = insertPoint.parentNode;
-                }
-                if (insertPoint === qDiv || !insertPoint) {
-                    qDiv.appendChild(noteEl);
-                } else if (insertPoint && insertPoint.parentNode) {
-                    insertPoint.parentNode.insertBefore(noteEl, insertPoint.nextSibling);
-                }
-
                 showToast(i18n('toast_note_added'));
             } catch (err) {
+                onDelta.stop();
+                noteEl.remove();
                 console.error(err);
                 showToast(i18n('toast_ai_request_failed') + err.message);
             }
@@ -23215,11 +23628,19 @@ ${i18n('prompt_lecture_gen')}`;
             }
         }
 
+        // 正在生成的论文摘要已收到的正文（只在内存中）：paperId → { text }
+        const abstractStreams = new Map();
+
         async function generateAbstract(paperId) {
             let paper = appData.papers.find(p => p.id === paperId);
             if (!paper) return;
 
             showToast(i18n('toast_generating_abstract'));
+            // 生成期间摘要卡片显示“生成中”，在讲义阅读器里打开可边生成边看
+            const stream = { text: '' };
+            abstractStreams.set(paperId, stream);
+            renderNotesPage();
+            if (currentLecture?.isPaperAbstract && currentLecture.paperId === paperId) renderCurrentLectureStream();
 
             try {
                 const systemPrompt = i18n('prompt_abstract_sys');
@@ -23228,7 +23649,13 @@ ${i18n('prompt_lecture_gen')}`;
 ${paper.authors ? i18n('prompt_abstract_author') + paper.authors : ''}
 ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
 
-                const result = await callAI(systemPrompt, [{ role: 'user', content: userMessage }], { feature: 'library_abstract' });
+                const result = await callAI(systemPrompt, [{ role: 'user', content: userMessage }], {
+                    feature: 'library_abstract',
+                    onDelta: text => {
+                        stream.text = text;
+                        if (currentLecture?.isPaperAbstract && currentLecture.paperId === paperId) scheduleLectureStreamRender();
+                    }
+                });
 
                 paper = appData.papers.find(p => p.id === paperId);
                 if (!paper) return;
@@ -23242,11 +23669,20 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 showToast(i18n('toast_abstract_generated'));
                 // abstract_upload 同样会发布 metadata，无需重复触发
                 triggerSyncOnFileChange(abstractKey(paperId), 'abstract_upload');
-                renderNotesPage();
                 sendNotification(i18n('notification_abstract_done'), paper.title + i18n('abstract_added'));
             } catch (err) {
                 console.error('生成摘要失败:', err);
                 showToast(i18n('toast_gen_failed') + err.message);
+            } finally {
+                if (abstractStreams.get(paperId) === stream) abstractStreams.delete(paperId);
+                renderNotesPage();
+                // 正在看这篇摘要时换成生成完的正文（失败时为原来的内容），停在当前位置；没有可显示的内容就关闭阅读器
+                if (currentLecture?.isPaperAbstract && currentLecture.paperId === paperId) {
+                    const container = document.getElementById('lectureViewerContent');
+                    const scrollTop = container.scrollTop;
+                    if (await openAbstractInViewer(paperId)) setLectureScrollTop(container, scrollTop);
+                    else closeLectureViewer();
+                }
             }
         }
 
@@ -23328,6 +23764,9 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             const renderResponseMath = !!window._wrongAIChatOverride;
 
             addTypingIndicator(container);
+            // 回答流式画进“正在回答”的气泡，渲染方式与最终消息相同
+            const onDelta = chatStreamUpdater(() => document.querySelector('#typingIndicator .chat-bubble'),
+                renderResponseMath ? text => renderChatMarkdownLatex(text, true) : escapeHtml, renderResponseMath);
 
             try {
                 // 错题复用阅读问 AI 的提示词，仅普通聊天注入 AI 人设。
@@ -23365,13 +23804,15 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 }
 
                 const feature = window._wrongAIChatOverride ? 'wrong_chat_send' : 'library_chat';
-                const result = await callAI(systemPrompt, recentMessages, { feature });
-                
+                const result = await callAI(systemPrompt, recentMessages, { feature, onDelta });
+
                 removeTypingIndicator();
                 addChatMessage(container, false, result || i18n('chat_no_answer'), renderResponseMath);
             } catch (err) {
                 removeTypingIndicator();
                 addChatMessage(container, false, i18n('chat_call_failed') + err.message);
+            } finally {
+                onDelta.stop();
             }
         }
 
@@ -24045,8 +24486,9 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 <button onclick="renameClassroomSession('${type}','${folder.id}','${session.id}')" style="border:none;background:var(--bg-secondary);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);flex-shrink:0;">${i18n('rename')}</button>
             </div>`;
 
-            // AI-generated notes
-            if (session.notes.length > 0) {
+            // AI-generated notes（正在生成的排在已有笔记之后，点开可边生成边看）
+            const generatingMaterials = session.sourceFolder.filter(mat => mat && classroomNoteStreams.has(mat.id));
+            if (session.notes.length > 0 || generatingMaterials.length > 0) {
                 html += `<div style="margin-bottom:12px;font-size:13px;font-weight:600;color:var(--text-secondary);">${i18n('ai_notes')}</div>`;
                 const sourceIds = new Set((session.sourceFolder || []).map(m => m.id));
                 session.notes.forEach((note, idx) => {
@@ -24075,6 +24517,11 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                             <div class="classroom-note-progress-bar"><div class="classroom-note-progress-fill" style="width:${progress}%"></div></div>
                             <span class="classroom-note-progress-text">${progress}%</span>
                         </div>
+                    </div>`;
+                });
+                generatingMaterials.forEach(mat => {
+                    html += `<div class="classroom-note-card${mat.type === 'recording' ? ' recording-note' : ''}" onclick="openClassroomNoteStream('${mat.id}')">
+                        <div class="classroom-note-card-title">${escapeHtml(classroomStreamTitle(mat))}<span style="color:var(--accent);font-size:11px;margin-left:6px;">${i18n('generating')}</span></div>
                     </div>`;
                 });
             }
@@ -25888,6 +26335,96 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 Number(material.duration || 0) || Number(idbManifest?.duration || 0), feature);
         }
 
+        // ==================== 课堂笔记流式显示 ====================
+        // 正在生成的课堂笔记已收到的正文（只在内存中）：素材 id → { text }。
+        // 笔记要生成完才创建，生成期间场次页显示“生成中”的卡片，点开在讲义阅读器里边生成边看。
+        const classroomNoteStreams = new Map();
+
+        function classroomStreamTitle(material) {
+            return material.ref + ' ' + i18n(material.type === 'recording' ? 'rec_note_badge' : 'note_default');
+        }
+
+        // 课堂场次页正在显示这一场时重画，让“生成中”的卡片出现或消失
+        function refreshClassroomSessionView(found) {
+            if (found && currentClassroomSession?.sessionId === found.session.id) {
+                renderClassroomSessionDetail(found.folder, found.session, found.type);
+            }
+        }
+
+        function startClassroomNoteStream(materialId) {
+            const stream = { text: '' };
+            classroomNoteStreams.set(materialId, stream);
+            // 讲义阅读器正在显示这份素材的笔记（重新生成）时，改为显示流式正文
+            if (currentLecture?.isClassroomNote && !currentLecture.streamMaterialId) {
+                const { classroomType, folderId, sessionId, noteIndex } = currentLecture;
+                const session = (getClassroomFolder(classroomType, folderId)?.sessions || []).find(s => s.id === sessionId);
+                if (session?.notes?.[noteIndex]?.materialId === materialId) openClassroomNoteStream(materialId);
+            }
+            refreshClassroomSessionView(_findRecordingMaterial(materialId));
+            return stream;
+        }
+
+        function updateClassroomNoteStream(materialId, stream, text) {
+            stream.text = text;
+            if (currentLecture?.streamMaterialId === materialId) scheduleLectureStreamRender();
+        }
+
+        // noteId 为生成成功的新笔记；失败时为空
+        async function finishClassroomNoteStream(materialId, stream, noteId) {
+            if (classroomNoteStreams.get(materialId) === stream) classroomNoteStreams.delete(materialId);
+            const found = _findRecordingMaterial(materialId);
+            refreshClassroomSessionView(found);
+            if (currentLecture?.streamMaterialId !== materialId) return;
+            // 正在看流式正文：成功时换成新笔记并停在当前位置，失败时回到这份素材原来的笔记，没有笔记就关闭阅读器
+            const noteIndex = (found?.session.notes || [])
+                .findIndex(n => noteId ? n?.id === noteId : n?.materialId === materialId);
+            if (noteIndex < 0) {
+                closeLectureViewer();
+                return;
+            }
+            const container = document.getElementById('lectureViewerContent');
+            const scrollTop = container.scrollTop;
+            await openClassroomNote(found.type, found.folder.id, found.session.id, noteIndex);
+            if (noteId) setLectureScrollTop(container, scrollTop);
+        }
+
+        // 在讲义阅读器里看正在生成的课堂笔记：此时还没有笔记对象，按素材显示流式正文
+        function openClassroomNoteStream(materialId) {
+            const found = _findRecordingMaterial(materialId);
+            if (!found || !classroomNoteStreams.has(materialId)) return;
+            currentLecture = {
+                isClassroomNote: true,
+                classroomType: found.type,
+                folderId: found.folder.id,
+                sessionId: found.session.id,
+                noteIndex: null,
+                streamMaterialId: materialId,
+                bookId: null,
+                chapterIndex: null
+            };
+            document.getElementById('lectureViewerTitle').textContent = classroomStreamTitle(found.material);
+            document.getElementById('lectureProgressBadge').textContent = '0%';
+            document.getElementById('lectureViewerContent').innerHTML = `
+                <div class="generating-indicator">
+                    <div class="generating-spinner"></div>
+                    <span>${i18n('generating')}</span>
+                </div>`;
+            renderCurrentLectureStream();
+            document.getElementById('lectureViewer').classList.add('show');
+            document.body.classList.add('lecture-active');
+            // 生成中的笔记没有上一篇 / 下一篇
+            document.getElementById('lectureFooter').style.display = 'none';
+            document.getElementById('lectureToBookBtn').style.display = 'none';
+            document.getElementById('lectureDraftMiniBar').style.display = '';
+            document.getElementById('lectureDraftPanel').classList.remove('show');
+            initLectureFontsize();
+            if (einkMode) {
+                einkLectureCurrentPage = 0;
+                setTimeout(function() { setupEinkLectureTapZones(); einkUpdateLecturePages(); }, 200);
+            }
+            setTimeout(initLectureSelection, 100);
+        }
+
         async function generateClassroomRecordingNote(type, folderId, sessionId, materialIndex, options = {}) {
             const folder = getClassroomFolder(type, folderId);
             if (!folder) throw new Error(i18n('class_not_found'));
@@ -25900,6 +26437,22 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             const systemPrompt = i18n('prompt_rec_sys', material.ref);
             const userMsg = i18n('prompt_rec_user', folder.name, session.title, material.ref);
             let prepared = null;
+            const stream = startClassroomNoteStream(materialId);
+            // 流式预览按最终正文的拼法显示：多段时逐段加标题（与 recording-ai.js 的 mergeRecordingParts 相同），
+            // 多段或长录音文件时开头加录音标题
+            const segmentTexts = [];
+            const showSegmentText = (context, text) => {
+                segmentTexts[context.index] = text;
+                let preview = context.total > 1
+                    ? segmentTexts.slice(0, context.index + 1).map((part, i) =>
+                        '## 录音分段 ' + (i + 1) + '/' + context.total + '\n\n' + part).join('\n\n---\n\n')
+                    : text;
+                if (context.total > 1 || prepared?.mode === 'gemini-file') {
+                    preview = '# ' + material.ref + ' ' + i18n('rec_note_badge') + '\n\n' + preview;
+                }
+                updateClassroomNoteStream(materialId, stream, preview);
+            };
+            let note = null;
             try {
                 if (!window.RecordingAI?.runRecordingNoteJob) throw new Error(i18n('recording_split_module_not_loaded'));
                 prepared = await _prepareRecordingAiSegments(material, feature);
@@ -25918,7 +26471,8 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                             showToast(i18n('rec_processing_long_recording'));
                             const longSystem = systemPrompt + '\n\n' +
                                 i18n('prompt_long_recording_file');
-                            return doGeminiRequest(segment.geminiConfig, longSystem, [{
+                            // geminiConfig 只会是 Gemini 协议的渠道，doAIRequest 直接交给 doGeminiRequest
+                            return doAIRequestPreferStream(segment.geminiConfig, longSystem, [{
                                 role: 'user',
                                 content: [
                                     { type: 'audio', audio: {
@@ -25927,7 +26481,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                                     } },
                                     { type: 'text', text: userMsg }
                                 ]
-                            }], { temperature: 0.3 });
+                            }], { temperature: 0.3, onDelta: text => showSegmentText(context, text) });
                         }
                         let partBlob = null;
                         try {
@@ -25951,7 +26505,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                                     } },
                                     { type: 'text', text: partUser }
                                 ]
-                            }], { feature });
+                            }], { feature, onDelta: text => showSegmentText(context, text) });
                         } finally {
                             partBlob = null;
                         }
@@ -25961,7 +26515,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 if (job.segmentCount > 1 || prepared.mode === 'gemini-file') {
                     content = '# ' + material.ref + ' ' + i18n('rec_note_badge') + '\n\n' + content;
                 }
-                const note = await _commitGeneratedClassroomNote({
+                note = await _commitGeneratedClassroomNote({
                     materialId,
                     content,
                     isRecording: true,
@@ -25975,6 +26529,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 throw err;
             } finally {
                 if (prepared?.cleanup) await prepared.cleanup().catch(() => {});
+                finishClassroomNoteStream(materialId, stream, note?.id);
             }
         }
 
@@ -26141,9 +26696,14 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
 
             const userMsg = i18n('prompt_note_user', folder.name, session.title, material.ref);
 
+            const stream = startClassroomNoteStream(materialId);
+            let note = null;
             try {
                 let msgContent = [{ role: 'user', content: userMsg }];
-                const aiOptions = { feature: options.feature || 'classroom_upload_note' };
+                const aiOptions = {
+                    feature: options.feature || 'classroom_upload_note',
+                    onDelta: text => updateClassroomNoteStream(materialId, stream, text)
+                };
 
                 // For images, include the image
                 if (material.type === 'image' && material.data) {
@@ -26157,7 +26717,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 }
 
                 const result = await callAI(systemPrompt, msgContent, aiOptions);
-                const note = await _commitGeneratedClassroomNote({
+                note = await _commitGeneratedClassroomNote({
                     materialId,
                     content: result,
                     isRecording: false,
@@ -26174,6 +26734,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                     const current = _findRecordingMaterial(materialId);
                     if (current?.material) delete current.material.data;
                 }
+                finishClassroomNoteStream(materialId, stream, note?.id);
             }
         }
 
@@ -26305,15 +26866,13 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 container.scrollTop = 0;
                 setTimeout(function() { einkUpdateLecturePages(); }, 100);
             }
-
-            // Update scroll progress
-            container.onscroll = function() {
-                updateClassroomNoteProgress();
-            };
+            // 滚动进度由 #lectureViewerContent 自带的 onscroll（updateLectureProgress）处理，它会转给
+            // updateClassroomNoteProgress。这里不能改写 onscroll，否则之后打开的书籍讲义不再记录进度。
         }
 
         function updateClassroomNoteProgress() {
-            if (!currentLecture || !currentLecture.isClassroomNote) return;
+            // 生成中的流式正文高度一直在变，不计算阅读进度
+            if (!currentLecture || !currentLecture.isClassroomNote || currentLecture.streamMaterialId) return;
             const container = document.getElementById('lectureViewerContent');
             if (!container) return;
             const scrollTop = container.scrollTop;
@@ -26407,7 +26966,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
 
         // Regenerate classroom note
         async function confirmRegenerateClassroomNote() {
-            if (!currentLecture || !currentLecture.isClassroomNote) return;
+            if (!currentLecture || !currentLecture.isClassroomNote || currentLecture.streamMaterialId) return;
             if (!confirm(i18n('confirm_delete'))) return;
             const { classroomType, folderId, sessionId, noteIndex } = currentLecture;
             const folder = getClassroomFolder(classroomType, folderId);
@@ -26420,6 +26979,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             if (matIdx >= 0) {
                 const isRec = note.isRecordingNote || session.sourceFolder[matIdx].type === 'recording';
                 showToast(i18n('mat_regenerating'));
+                // 生成期间阅读器改为边生成边显示，完成后显示新笔记（失败时回到原笔记），不再关闭阅读器
                 try {
                     if (isRec) {
                         await generateClassroomRecordingNote(classroomType, folderId, sessionId, matIdx, {
@@ -26431,7 +26991,6 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                             replaceExisting: true, quietFailure: true, feature: 'classroom_regen_material'
                         });
                     }
-                    closeLectureViewer();
                     showToast(i18n('mat_regen_done'));
                 } catch (e) {
                     showToast(i18n('toast_regen_failed') + (e.message || e));
@@ -33314,7 +33873,8 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 document.getElementById('nbOutline')?.classList.contains('show') ||
                 document.getElementById('nbExportModal')?.classList.contains('show') ||
                 document.getElementById('nbQuizModal')?.classList.contains('show') ||
-                document.getElementById('nbQuizFullscreen')?.classList.contains('show');
+                document.getElementById('nbQuizFullscreen')?.classList.contains('show') ||
+                document.getElementById('readerChatModal')?.classList.contains('show');
             window.__nbNativeSuspend = (nbState.tool !== 'pen') || !!overlayOpen || !!nbState.selectedTextId;
         }
         function nbNativeRefresh() {
@@ -33860,6 +34420,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 ${NB_COLORS.map(c => `<button onclick="nbColorSelection('${c}')" title="${i18n('change_color')}"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};vertical-align:middle;"></span></button>`).join('')}
                 <span class="sep"></span>
                 <button onclick="nbRecognizeSelection()">${i18n('ai_recognize')}</button>
+                <button onclick="nbAskAISelection()">${i18n('ask_ai')}</button>
                 <button onclick="nbCopySelection()">${i18n('copy')}</button>
                 <button onclick="nbDeleteSelection()" style="color:#ef4444;">${i18n('delete')}</button>`;
             bar.classList.add('show');
@@ -33884,10 +34445,10 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             document.getElementById('nbSelToolbar')?.classList.remove('show');
         }
 
-        // 套索选区 → 图片 → AI 识别（含数学公式）
-        async function nbRecognizeSelection() {
+        // 套索选中的笔画渲染成白底图片（AI 识别与问 AI 共用），没有选中笔画时返回 null
+        function nbSelectionImage() {
             const strokes = nbSelStrokes();
-            if (!strokes.length) return;
+            if (!strokes.length) return null;
             const bb = nbState.selection.bbox;
             const pad = 16;
             const w = bb.x1 - bb.x0 + pad * 2, h = bb.y1 - bb.y0 + pad * 2;
@@ -33900,7 +34461,13 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             ctx.fillRect(0, 0, cv.width, cv.height);
             ctx.setTransform(scale, 0, 0, scale, -bb.x0 * scale + pad * scale, -bb.y0 * scale + pad * scale);
             for (const s of strokes) nbDrawStrokeObj(ctx, s);
-            const img = cv.toDataURL('image/png');
+            return cv.toDataURL('image/png');
+        }
+
+        // 套索选区 → 图片 → AI 识别（含数学公式）
+        async function nbRecognizeSelection() {
+            const img = nbSelectionImage();
+            if (!img) return;
             showToast(i18n('ai_recognizing'));
             try {
                 const text = await callAI(
@@ -33938,6 +34505,70 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             const raw = document.getElementById('nbQuizBody').dataset.raw || '';
             nbHideQuiz();
             nbAddTextBox(Math.min(x, NB_PAGE_W - 250), Math.min(y, NB_PAGE_H - 80), raw, true);
+        }
+
+        // 套索选区 → 图片 → 问 AI：提示词与讲义页选中内容问 AI 相同（数学讲师系统提示），
+        // 用户提问沿用阅读页套索问 AI 的圈选图片说法；回答在结果面板里流式显示，可插入为文本框或复制。
+        // nbAskState 记录本次提问的图片和插入位置，再次问 AI 时整个换掉，旧回答不再写进面板。
+        let nbAskState = null;
+
+        function nbAskAISelection() {
+            const image = nbSelectionImage();
+            if (!image) return;
+            const bb = nbState.selection.bbox;
+            nbAskState = { image, x: Math.round(bb.x0), y: Math.round(bb.y1) + 20 };
+            document.getElementById('nbQuizTitle').textContent = i18n('ask_ai');
+            const body = document.getElementById('nbQuizBody');
+            body.innerHTML = `
+                <img class="nb-ask-image" src="${image}" alt="">
+                <input type="text" id="nbAskInput" class="nb-ask-input" placeholder="${escapeHtml(i18n('optional_description'))}"
+                    autocomplete="off" onkeydown="if(event.key==='Enter')nbSendAskAI()">`;
+            body.dataset.raw = '';
+            document.getElementById('nbQuizFoot').innerHTML = `
+                <button class="nb-panel-btn" onclick="nbHideQuiz()">${i18n('close')}</button>
+                <button class="nb-panel-btn primary" onclick="nbSendAskAI()">${i18n('chat_send')}</button>`;
+            document.getElementById('nbQuizModal').classList.add('show');
+            nbUpdateNativeSuspend();
+            setTimeout(() => document.getElementById('nbAskInput')?.focus(), 100);
+        }
+
+        async function nbSendAskAI() {
+            const ask = nbAskState;
+            if (!ask || ask.sent) return;
+            ask.sent = true;
+            const question = (document.getElementById('nbAskInput')?.value || '').trim();
+            const body = document.getElementById('nbQuizBody');
+            body.innerHTML = `<img class="nb-ask-image" src="${ask.image}" alt="">` +
+                (question ? `<div class="nb-ask-question">${escapeHtml(question)}</div>` : '') +
+                '<div id="nbAskAnswer"><div class="chat-typing"><span></span><span></span><span></span></div></div>';
+            document.getElementById('nbQuizFoot').innerHTML =
+                `<button class="nb-panel-btn primary" onclick="nbHideQuiz()">${i18n('close')}</button>`;
+            // 面板换成别的内容或再次问 AI 后不再写入
+            const answerEl = () => nbAskState === ask ? document.getElementById('nbAskAnswer') : null;
+            const onDelta = chatStreamUpdater(answerEl);
+            const tip = question
+                ? i18n('prompt_lasso_image_with_question', question)
+                : i18n('prompt_explain_lasso_image');
+            try {
+                const text = await callAI(i18n('prompt_math_explain'), [{ role: 'user', content: [
+                    { type: 'image_url', image_url: { url: ask.image } },
+                    { type: 'text', text: tip }
+                ] }], { feature: 'notebook_lasso_ask', onDelta }) || i18n('chat_no_ai_answer');
+                onDelta.stop();
+                const el = answerEl();
+                if (!el) return;
+                el.innerHTML = renderChatMarkdownLatex(text);
+                renderLectureMath(el);
+                body.dataset.raw = text;
+                document.getElementById('nbQuizFoot').innerHTML = `
+                    <button class="nb-panel-btn" onclick="nbInsertRecognizedText(${ask.x},${ask.y})">${i18n('insert_as_text_box')}</button>
+                    <button class="nb-panel-btn" onclick="nbCopyText()">${i18n('copy_text')}</button>
+                    <button class="nb-panel-btn primary" onclick="nbHideQuiz()">${i18n('close')}</button>`;
+            } catch (e) {
+                onDelta.stop();
+                const el = answerEl();
+                if (el) el.textContent = i18n('toast_ai_request_failed') + (e.message || '');
+            }
         }
 
         // ==================== 图形 ====================
@@ -35391,6 +36022,23 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             triggerSyncOnFileChange(r.pageId, 'notebook_review_update');
             showToast(i18n('regenerating_quiz'));
             nbGenerateQuiz(r, stage, isExtra, dueAt, 'review_regenerate');
+        }
+
+        // ==================== 笔记 AI 对话（搜索按钮上方）====================
+        // 沿用讲义问 AI：同一对话弹窗、提示词、操作、记录保存与云同步。对话按页保存在笔记本页面元数据上，
+        // 每次提问附上这一页笔记的图片（与加入复习的页面截图相同）。
+        async function nbOpenAIChat() {
+            const nb = nbCurrentNotebook();
+            const page = nbCurrentPage();
+            if (!nb || !page) return;
+            nbHidePanel();
+            await openReaderChat({
+                id: 'nb_chat_' + page.id,
+                title: nb.name + ' · ' + i18n('page_label', nbState.pageIndex + 1),
+                notebookPage: { notebookId: nb.id, pageId: page.id }
+            });
+            // 对话弹窗盖在编辑器上，挂起原生直渲染；关闭时在 hideModal 里恢复
+            nbUpdateNativeSuspend();
         }
 
         async function nbReviewBtnClick() {

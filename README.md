@@ -14,7 +14,7 @@ This repository ships the current Math Reader web app as an Android APK. BOOX/E 
 | 书架与阅读 | 管理书籍/论文，阅读和批注 PDF，搜索/OCR、套索问 AI、按文档保存对话 |
 | 讲义 | 为 PDF 书籍生成大纲和分章节讲义，为论文生成摘要 |
 | Claude 连接器 | 让 claude.ai 读取书目、大纲和书页，在对话中写讲义，图由 Claude 内置可视化绘制；对话里可打开书目-大纲界面直接点选章节（见 [mcp/README.md](mcp/README.md)） |
-| 笔记 | 模板化手写笔记本、PDF/图片/音频插入、搜索、PDF 导出 |
+| 笔记 | 模板化手写笔记本、PDF/图片/音频插入、搜索、套索问 AI、按页 AI 对话、PDF 导出 |
 | 复习 | 从指定笔记页生成 Quiz，按间隔复习计划自动推进并由 AI 评分 |
 | 习题 | 从图片/PDF 识别题目，手写作答、计时、AI 批改、重做与归档 |
 | 数据 | 本地持久化、完整 ZIP 备份，以及可选的 Cloudflare R2 多设备同步 |
@@ -46,9 +46,11 @@ This repository ships the current Math Reader web app as an Android APK. BOOX/E 
 5. **Supabase** 和 **Mathpix** 位于 Other Services，仅在你确实使用对应服务时填写。
 6. 保存后先用一个普通 AI 对话验证配置，再测试图片识别、录音或 PDF 任务。
 
-**设置 → AI 功能分配** 按课堂、书架、阅读、讲义与摘要、笔记、复习、习题、错题分组折叠列出全部 AI 功能，每个功能可单独选择主要、次要或备用 API，生成与重新生成、失败重试等操作各算一个功能；展开分组后也可用“本组全部使用”一次设置整组。默认全部使用主要 API；所选 API 未配置时自动改用主要 API。
+**设置 → AI 功能分配** 默认收起为一行“全部 AI 功能”，显示功能总数和每套 API 被选用的项数（没有功能选用的 API 不列出）；点开后按课堂、书架、阅读、讲义与摘要、笔记、复习、习题、错题分组折叠列出全部 AI 功能，每个功能可单独选择主要、次要或备用 API，生成与重新生成、失败重试等操作各算一个功能；展开分组后也可用“本组全部使用”一次设置整组。默认全部使用主要 API；所选 API 未配置时自动改用主要 API。
 
 每次 AI 请求的输出 token 上限为 32800。模型本身的输出上限更低时，应用会按服务商返回的上限自动重试一次，并在本次运行中记住该模型的上限。
+
+各处 AI 对话、问 AI 的回答，以及书籍讲义、论文摘要、课堂 AI 笔记都边生成边显示（流式返回）。所用接口不支持流式返回时，同一 API 自动改用普通请求，结果在生成完成后一次显示。
 
 模型能力建议：
 
@@ -82,7 +84,7 @@ API Key 和 AI 功能分配保存在本机设置中，不会随 R2 元数据同�
 - 底部页码条可上一页、下一页；点击页码可输入页码跳转。阅读进度和最近页会自动保存。
 - 搜索按钮支持关键词、上一项/下一项、区分大小写；扫描版 PDF 可使用 **OCR 识别搜索**。
 - 右上角模式按钮在 **画笔** 和 **套索** 间切换。画笔模式可选择颜色/粗细、撤销、重做、整笔橡皮和插入图片。
-- 套索模式可圈选当前 PDF 区域，应用会合成原页与已有批注并截图，再打开“问 AI”输入框。回答以编号标记保存在页面上，点击标记可重新查看或删除。
+- 套索模式可圈选当前 PDF 区域，应用会合成原页与已有批注并截图，再打开“问 AI”输入框。回答生成期间先在圈选位置显示临时标记和气泡，边生成边显示；完成后以编号标记保存在页面上，点击标记可重新查看或删除。
 - 点击左上角 **AI** 打开该文档的独立对话。对话可结合当前页面截图，也支持引用选中文字，并可导出聊天记录；每个文档保存自己的对话历史。
 - 页面下方的草稿条可展开独立草稿：同时支持富文本和手写画布，以及画笔、橡皮、撤销/重做和清空。
 - 书籍大纲生成后，阅读器中的书签/章节入口可以在原文页和对应讲义之间跳转。
@@ -97,7 +99,7 @@ API Key 和 AI 功能分配保存在本机设置中，不会随 R2 元数据同�
    - **麦克风**：开始/停止课堂录音；首次使用需要授予麦克风权限。
    - **上传**：可选择图片、音频、PDF、Word、纯文本、Markdown、TeX/LaTeX 等资料。
    - **相机**：拍摄板书、讲义或现场资料。
-4. 上传完成后，资料保存在“源素材”，应用会基于素材生成 AI 笔记；停止录音后会保存录音并生成转写纪要。
+4. 上传完成后，资料保存在“源素材”，应用会基于素材生成 AI 笔记；停止录音后会保存录音并生成转写纪要。生成期间“AI 讲义”下显示一张“生成中”的卡片，点开可在讲义阅读器里边生成边看，完成后换成正式笔记并停在当前位置。在阅读器里重新生成当前笔记时同样边生成边显示，完成后显示新笔记（失败时回到原笔记）。
 5. 打开 AI 笔记可阅读 LaTeX 内容、查看进度，并通过来源引用跳回对应素材。
 6. 长按源素材可重新生成笔记或删除；长按 AI 笔记可下载 PDF 或删除。课程/讲座文件夹支持重命名和删除，场次支持重命名。
 
@@ -111,12 +113,12 @@ iPhone/iPad PWA 中超过 5 分钟或 10 MB 的 AAC/M4A 长录音需要配置 Ge
 
 1. 在 **书架 → AI → 生成大纲** 选择 PDF 书籍。
 2. 大纲完成后选择 **生成讲义**。系统建立章节列表并优先生成第一节。
-3. 打开 **讲义**，左栏按书籍列出讲义文件夹；进入后点击章节，尚未生成的章节会按需生成。
+3. 打开 **讲义**，左栏按书籍列出讲义文件夹；进入后点击章节，尚未生成的章节会按需生成。生成中的章节边生成边显示已返回的正文，完成后停在当前阅读位置；所用接口不支持流式返回时，改为生成完成后一次显示。
 4. 讲义阅读器支持上一节/下一节、返回原书页、字号调整、进度记录、页面画笔和独立草稿。
 5. 选中讲义内容可直接问 AI；右上角可重新生成当前章节。长按章节卡片可下载 PDF。
 6. 右下角画笔按钮左侧的 **AI** 打开当前讲义的独立对话，界面、提示词和操作（引用、编辑、重新生成、导出）与阅读页的 AI 对话相同。每次提问都会把当前讲义正文作为附件发给 AI，不发送页面截图；对话历史按章节分别保存（最多 30 条），开启 R2 同步时随元数据同步到其他设备。论文摘要和课堂 AI 笔记在讲义阅读器中打开时同样可用，各自保存对话。该对话在 **设置 → AI 功能分配 → 讲义与摘要** 中对应“讲义 AI 对话”的三项。
 
-**生成论文摘要**：在 **书架 → AI → 生成摘要** 选择论文。结果显示在 **讲义 → 摘要** 栏，并使用同一讲义阅读器显示、渲染公式和保存阅读进度。
+**生成论文摘要**：在 **书架 → AI → 生成摘要** 选择论文。结果显示在 **讲义 → 摘要** 栏，并使用同一讲义阅读器显示、渲染公式和保存阅读进度。生成期间摘要卡片显示“生成中”，点开可边生成边看。
 
 ### 7. 笔记本与间隔复习
 
@@ -124,12 +126,14 @@ iPhone/iPad PWA 中超过 5 分钟或 10 MB 的 AAC/M4A 长录音需要配置 Ge
 
 1. 打开 **笔记**，点击“笔记本”栏空白处，输入名称并选择模板：空白、宽横线、窄横线、康奈尔或会议记录。
 2. 顶部三个笔刷可单击切换、双击设置；另有整笔橡皮、撤销/重做和前后翻页。
-3. 左侧工具包括模板、套索、文本、图形、页面管理、缩放、导出、插入、搜索、加入复习和更多。
+3. 左侧工具包括模板、套索、文本、图形、页面管理、缩放、导出、插入、AI 对话、搜索、加入复习和更多。
 4. 图形工具支持圆、长方形、三角形、直线、平滑曲线、箭头、二维坐标系和三维坐标系。
 5. 页面管理可在当前页前后插页、删除页面或把 PDF 页插入笔记本；单次 PDF 导入最多取前 60 页。
 6. 插入工具可添加图片或音频；导出可勾选页面并打印或生成 PDF。
 7. 点击页码可打开缩略图/大纲，跳页、调整页序，并把页面加入大纲。
 8. 搜索会查找文本框、媒体名和已建立的手写索引。手写内容需先点击 **AI 识别手写建立索引**。
+9. 套索选中笔迹后，浮动工具栏里 **AI 识别**（转文字）旁边的 **问 AI** 把选区截图发给 AI，可在输入框补充问题（可为空）。系统提示词与讲义页选中文字问 AI 相同，提问方式与阅读页套索问 AI 相同。回答在弹出面板里边生成边显示，可插入为文本框或复制。
+10. 左侧 **搜索** 上方的 **AI 对话** 打开当前页的独立对话，界面、提示词和操作（引用、编辑、重新生成、导出）与讲义页右下角的问 AI 相同。每次提问都把当前页渲染成图片作为附件发给 AI；对话历史按页分别保存（最多 30 条），开启 R2 同步时随元数据同步到其他设备。这两项在 **设置 → AI 功能分配 → 笔记** 中分别对应“套索选区问 AI”和“笔记 AI 对话”的三项。
 
 #### 加入复习
 
@@ -240,9 +244,11 @@ Open **Settings → API Setting**:
 5. Supabase and Mathpix are optional services; leave them empty unless your workflow needs them.
 6. Save the settings, test a text chat, and then test any image, audio, or PDF workflow you plan to use.
 
-**Settings → AI Feature Assignment** lists every AI feature in collapsible groups (Class, Library, Reader, Lectures & abstracts, Notes, Review, Exercises, Wrong questions). Each feature, including generate, regenerate, and retry actions separately, can use the primary, secondary, or backup API, and **Use for the whole group** sets a whole group at once. Everything uses the primary API by default, and a feature assigned to an unconfigured API falls back to the primary API.
+**Settings → AI Feature Assignment** is collapsed into a single **All AI features** row showing the number of features and how many use each API (an API that no feature uses is not listed). Expand it to list every AI feature in collapsible groups (Class, Library, Reader, Lectures & abstracts, Notes, Review, Exercises, Wrong questions). Each feature, including generate, regenerate, and retry actions separately, can use the primary, secondary, or backup API, and **Use for the whole group** sets a whole group at once. Everything uses the primary API by default, and a feature assigned to an unconfigured API falls back to the primary API.
 
 Every AI request allows up to 32,800 output tokens. If a model's own output limit is lower, the app retries once with the limit reported by the provider and remembers it for the rest of the session.
+
+AI chats, Ask AI answers, book lectures, paper abstracts, and class AI notes are shown as they stream in. If the API does not support streaming, the same API is called again without streaming and the result appears when generation completes.
 
 Use a strong text/LaTeX model for chat, outlines, lectures, and abstracts. Lasso questions, handwriting indexing, exercise extraction, and grading require vision input. Classroom transcription requires an API that accepts the audio sent by the app. PDF outline and lecture generation require a provider compatible with the app's PDF attachment calls.
 
@@ -269,7 +275,7 @@ For books, generate and review the PDF outline before generating lectures. Outli
 - The page bar moves between pages; tap the page count to jump to a page. Reading position is saved.
 - Search supports previous/next result and case sensitivity. Use **OCR Search** for scanned PDFs.
 - The upper-right tool switches between **Pen** and **Lasso**. Pen mode provides colors, widths, undo/redo, stroke eraser, and image insertion.
-- Lasso mode captures a selected PDF region together with visible annotations and opens Ask AI. Answers are stored as numbered page markers that can be reopened or deleted.
+- Lasso mode captures a selected PDF region together with visible annotations and opens Ask AI. While the answer streams in, a temporary marker and bubble show it at the selection; finished answers are stored as numbered page markers that can be reopened or deleted.
 - The top-left **AI** button opens a chat stored separately for the current document. It can use a current-page screenshot, quote selected text, and export the chat history.
 - Expand the bottom scratchpad for rich text and freehand work, with pen, eraser, undo/redo, and clear controls.
 - After an outline is generated, bookmarks connect source pages with their lecture chapters.
@@ -281,7 +287,7 @@ Normal text search on a text PDF does not need AI. OCR, lasso questions, and scr
 1. Tap an empty area under Course or Seminar to create a top-level folder.
 2. Open it and create a session. A date-based title is suggested and can be edited.
 3. In the session, use the lower-right actions to record audio, upload files, or take a photo. Uploads accept images, audio, PDF, Word, plain text, Markdown, and TeX/LaTeX files.
-4. Uploaded material appears under Source Material and is converted into an AI note. Stopping a recording saves it and starts transcript/minutes generation.
+4. Uploaded material appears under Source Material and is converted into an AI note. Stopping a recording saves it and starts transcript/minutes generation. While a note is being generated, a card marked “Generating…” appears in the AI lectures list; open it to read the note in the lecture viewer as it streams in. When it finishes, the viewer switches to the saved note at the same position. Regenerating the note you are reading streams the same way and then shows the new note (or the previous one if generation fails).
 5. Open an AI note to read formatted math and follow source references back to the original material.
 6. Long-press source material to regenerate its note or delete it. Long-press an AI note to download it as a PDF or delete it. Folders and sessions can be renamed.
 
@@ -289,21 +295,23 @@ Recordings use durable app-private storage and survive WebView recreation and in
 
 ### 6. Lectures and abstracts
 
-For a book, run **Library → AI → Generate Outline**, then **Generate Lecture**. Open **Lectures**, enter the book folder, and open a chapter; pending chapters are generated on demand. The lecture viewer supports previous/next chapter, source-book jump, font size, progress, drawing, a separate scratchpad, selected-text questions, regeneration, and PDF download by long-pressing a chapter card.
+For a book, run **Library → AI → Generate Outline**, then **Generate Lecture**. Open **Lectures**, enter the book folder, and open a chapter; pending chapters are generated on demand. While a chapter is being generated, the text received so far is shown as it streams in, and the view stays at your reading position when generation finishes; if the API does not support streaming, the chapter appears once generation completes. The lecture viewer supports previous/next chapter, source-book jump, font size, progress, drawing, a separate scratchpad, selected-text questions, regeneration, and PDF download by long-pressing a chapter card.
 
 The **AI** button to the left of the pen button opens a separate chat for the current lecture, with the same interface, prompts, and actions (quote, edit, regenerate, export) as the Reader AI chat. Each question sends the current lecture text as the attachment instead of a page screenshot. Chat history is kept per chapter (up to 30 messages) and syncs with the R2 metadata when sync is enabled. Abstracts and class AI notes opened in the lecture viewer have their own chats in the same way. In **Settings → AI Feature Assignment → Lectures & abstracts**, the chat uses the three “Lecture AI chat” features.
 
-For a paper, run **Generate Abstract**. The result appears in the Abstracts column and uses the same math-aware viewer.
+For a paper, run **Generate Abstract**. The result appears in the Abstracts column and uses the same math-aware viewer. While it is being generated, the card is marked “Generating…” and can be opened to read the abstract as it streams in.
 
 ### 7. Notebooks and spaced review
 
-Create a notebook from the empty Notebooks column and choose Blank, Wide ruled, Narrow ruled, Cornell, or Meeting Notes. The editor provides configurable brush presets, stroke eraser, undo/redo, lasso, text, shapes, templates, page management, 50–200% zoom, media insertion, search, and export.
+Create a notebook from the empty Notebooks column and choose Blank, Wide ruled, Narrow ruled, Cornell, or Meeting Notes. The editor provides configurable brush presets, stroke eraser, undo/redo, lasso, text, shapes, templates, page management, 50–200% zoom, media insertion, AI chat, search, and export.
 
 - Shapes include circle, rectangle, triangle, line, smooth curve, arrow, and 2D/3D axes.
 - Insert pages before or after the current page, or import up to the first 60 pages of a PDF as notebook pages.
 - Insert images or audio. Select notebook pages for print or PDF export.
 - Tap the page number for thumbnails/outlines, page jump, reordering, and outline entries.
 - Search covers text boxes, media names, and an optional AI-generated handwriting index.
+- After lasso-selecting strokes, **Ask AI** next to **AI recognize** (text conversion) in the floating toolbar sends an image of the selection, with an optional question. It uses the same system prompt as Ask AI on selected lecture text and the same question wording as Reader lasso Ask AI. The answer streams into a panel and can be inserted as a text box or copied.
+- **AI chat**, above **Search** in the left toolbar, opens a separate chat for the current page with the same interface, prompts, and actions (quote, edit, regenerate, export) as the lecture viewer's Ask AI. Each question attaches an image of the current page. Chat history is kept per page (up to 30 messages) and syncs with the R2 metadata when sync is enabled. In **Settings → AI Feature Assignment → Notes**, these use “Ask AI about a lasso selection” and the three “Notes AI chat” features.
 
 To review a page, tap **Add to Review** in that notebook page. AI generates a Quiz and schedules stages for the same day, 2, 4, 7, and 21 days later. Handwrite the Quiz answer and tap **Complete** for 0–10 scoring, per-question checks, and full solutions. The app then prepares the next stage. Quiz view can always reopen the source note page; overdue items may receive consolidation work, while long-neglected plans can become invalid.
 
