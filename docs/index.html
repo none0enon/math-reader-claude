@@ -5680,14 +5680,28 @@
             </div>
         </div>
 
-        <!-- AI 功能分配：按模块折叠，每个功能单独选择主要 / 次要 / 备用 API -->
+        <!-- AI 功能分配：整体默认收起；展开后按模块折叠，每个功能单独选择主要 / 次要 / 备用 API -->
         <div class="settings-section">
             <div class="settings-section-title" data-i18n="ai_route_settings">AI 功能分配</div>
-            <div class="ai-route-hint">
-                <div id="aiRouteApiSummary"></div>
-                <div data-i18n="ai_route_hint">每个功能可单独选择主要、次要或备用 API。所选 API 未配置时改用主要 API；调用失败时改用备用 API（所选为备用时改用主要 API）。</div>
+            <div class="setting-item" onclick="toggleAIRouteSettings()">
+                <div class="setting-item-left">
+                    <div class="setting-item-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                    </div>
+                    <div>
+                        <div class="setting-item-label" data-i18n="ai_route_all_features">全部 AI 功能</div>
+                        <div class="setting-item-desc" id="aiRouteOverview"></div>
+                    </div>
+                </div>
+                <span class="settings-item-arrow" id="aiRouteArrow">›</span>
             </div>
-            <div id="aiRouteGroups"></div>
+            <div id="aiRouteBody" style="display: none;">
+                <div class="ai-route-hint">
+                    <div id="aiRouteApiSummary"></div>
+                    <div data-i18n="ai_route_hint">每个功能可单独选择主要、次要或备用 API。所选 API 未配置时改用主要 API；调用失败时改用备用 API（所选为备用时改用主要 API）。</div>
+                </div>
+                <div id="aiRouteGroups"></div>
+            </div>
         </div>
 
         <!-- Theme Settings (faithful to original) -->
@@ -7450,7 +7464,7 @@
         Object.assign(I18N.zh, {
             secondary_api:'次要 API', secondary_api_desc:'(在设置页按功能选用)', no_secondary:'不使用次要',
             toast_api_failover:'{0} 调用失败，尝试{1}...',
-            ai_route_settings:'AI 功能分配',
+            ai_route_settings:'AI 功能分配', ai_route_all_features:'全部 AI 功能',
             ai_route_hint:'每个功能可单独选择主要、次要或备用 API。所选 API 未配置时改用主要 API；调用失败时改用备用 API（所选为备用时改用主要 API）。',
             ai_route_api_entry:'{0}：{1}', ai_route_not_configured:'未配置',
             ai_route_slot_primary:'主要', ai_route_slot_secondary:'次要', ai_route_slot_backup:'备用',
@@ -7486,7 +7500,7 @@
         Object.assign(I18N.en, {
             secondary_api:'Secondary API', secondary_api_desc:'(choose it per feature in Settings)', no_secondary:'No secondary',
             toast_api_failover:'{0} failed, trying {1}...',
-            ai_route_settings:'AI Feature Assignment',
+            ai_route_settings:'AI Feature Assignment', ai_route_all_features:'All AI features',
             ai_route_hint:'Choose the primary, secondary, or backup API for each feature. If the selected API is not configured, the primary API is used; if a call fails, the backup API is tried (or the primary API when the backup was selected).',
             ai_route_api_entry:'{0}: {1}', ai_route_not_configured:'not configured',
             ai_route_slot_primary:'Primary', ai_route_slot_secondary:'Secondary', ai_route_slot_backup:'Backup',
@@ -7522,7 +7536,7 @@
         Object.assign(I18N.fr, {
             secondary_api:'API secondaire', secondary_api_desc:'(à choisir par fonction dans Réglages)', no_secondary:'Pas d’API secondaire',
             toast_api_failover:'{0} a échoué, tentative avec {1}...',
-            ai_route_settings:'IA par fonction',
+            ai_route_settings:'IA par fonction', ai_route_all_features:'Toutes les fonctions IA',
             ai_route_hint:'Choisissez l’API principale, secondaire ou de secours pour chaque fonction. Si l’API choisie n’est pas configurée, l’API principale est utilisée ; en cas d’échec, l’API de secours prend le relais (ou l’API principale si le secours était choisi).',
             ai_route_api_entry:'{0} : {1}', ai_route_not_configured:'non configurée',
             ai_route_slot_primary:'Principale', ai_route_slot_secondary:'Secondaire', ai_route_slot_backup:'Secours',
@@ -13095,6 +13109,7 @@
         function setAIFeatureRoute(groupId, feature, slot) {
             setAIFeatureSlots([feature], slot);
             renderAIRouteGroup(groupId);
+            renderAIRouteOverview();
         }
 
         function setAIRouteGroupSlot(groupId, slot) {
@@ -13102,6 +13117,15 @@
             if (!group) return;
             setAIFeatureSlots(group.features, slot);
             renderAIRouteGroup(groupId);
+            renderAIRouteOverview();
+        }
+
+        // 整个 AI 功能分配默认收起，只显示一行汇总；展开后才列出各模块
+        function toggleAIRouteSettings() {
+            const body = document.getElementById('aiRouteBody');
+            const expanded = body.style.display === 'none';
+            body.style.display = expanded ? '' : 'none';
+            document.getElementById('aiRouteArrow').classList.toggle('expanded', expanded);
         }
 
         // 同一时间只展开一个分组，避免列表过长
@@ -13118,11 +13142,17 @@
                 onclick="${onclickFor(slot)}">${escapeHtml(i18n('ai_route_slot_' + slot))}</button>`).join('')}</div>`;
         }
 
-        function aiRouteGroupHtml(group) {
-            const slots = group.features.map(getAIFeatureSlot);
+        // 一组功能当前所选的 API 及其统计，text 形如“N 项 · 主要 x · 次要 y”
+        function aiRouteSummary(features) {
+            const slots = features.map(getAIFeatureSlot);
             const counts = AI_API_SLOTS.map(slot => [slot, slots.filter(s => s === slot).length]).filter(([, n]) => n);
-            const summary = [i18n('ai_route_group_count', group.features.length),
+            const text = [i18n('ai_route_group_count', features.length),
                 ...counts.map(([slot, n]) => `${i18n('ai_route_slot_' + slot)} ${n}`)].join(' · ');
+            return { slots, counts, text };
+        }
+
+        function aiRouteGroupHtml(group) {
+            const { slots, counts, text: summary } = aiRouteSummary(group.features);
             const expanded = aiRouteExpandedGroup === group.id;
             let html = `
                 <div class="setting-item" onclick="toggleAIRouteGroup('${group.id}')">
@@ -13168,9 +13198,15 @@
             if (el && group) el.innerHTML = aiRouteGroupHtml(group);
         }
 
+        function renderAIRouteOverview() {
+            const el = document.getElementById('aiRouteOverview');
+            if (el) el.textContent = aiRouteSummary(AI_FEATURE_GROUPS.flatMap(g => g.features)).text;
+        }
+
         function renderAIRouteSettings() {
             const container = document.getElementById('aiRouteGroups');
             if (!container) return;
+            renderAIRouteOverview();
             document.getElementById('aiRouteApiSummary').textContent = AI_API_SLOTS.map(slot => {
                 const config = getAIApiConfig(slot);
                 return i18n('ai_route_api_entry', aiApiName(slot), isAIApiConfigured(config)
@@ -20084,22 +20120,90 @@
 
         // ==================== 通用AI调用 ====================
         // options.feature 为 AI 功能分配中的功能 id，决定使用主要 / 次要 / 备用哪一套 API
+        // options.onDelta 存在时走流式请求，每收到一段正文就以本次请求已收到的全文回调；返回值仍是全文
         async function callAI(systemPrompt, messages, options = {}) {
             const [config, fallbackConfig] = resolveAIRoute(options.feature);
             if (!config) throw new Error(i18n('configure_api_first'));
             try {
-                return await doAIRequest(config, systemPrompt, messages, options);
+                return await doAIRequestPreferStream(config, systemPrompt, messages, options);
             } catch (e) {
                 console.error(`${config.slot} API 调用失败:`, e);
                 if (!fallbackConfig) throw e;
                 showToast(i18n('toast_api_failover', aiApiName(config.slot), aiApiName(fallbackConfig.slot)));
                 try {
-                    return await doAIRequest(fallbackConfig, systemPrompt, messages, options);
+                    return await doAIRequestPreferStream(fallbackConfig, systemPrompt, messages, options);
                 } catch (e2) {
                     console.error(`${fallbackConfig.slot} API 也失败:`, e2);
                     throw new Error(i18n('all_apis_failed'));
                 }
             }
+        }
+
+        // 流式请求在收到任何正文之前就失败（例如服务端没有流式接口）时，同一个 API 改用普通请求再试一次
+        async function doAIRequestPreferStream(config, systemPrompt, messages, options) {
+            if (!options.onDelta) return await doAIRequest(config, systemPrompt, messages, options);
+            let received = false;
+            try {
+                return await doAIRequest(config, systemPrompt, messages, {
+                    ...options,
+                    onDelta: text => { received = true; options.onDelta(text); }
+                });
+            } catch (e) {
+                if (received) throw e;
+                console.warn(`${config.slot} API 流式请求失败，改用普通请求:`, e);
+                return await doAIRequest(config, systemPrompt, messages, { ...options, onDelta: null });
+            }
+        }
+
+        // 读取流式响应。OpenAI 兼容接口、Claude 和 Gemini（alt=sse）都返回 SSE，每个事件的 data 是一段 JSON；
+        // deltaOf(event) 取出这一段新增的正文，每收到新正文就以已收到的全文调用 onDelta。
+        // 服务端忽略流式参数、直接返回 JSON 时，用 textOf(data) 取出全文。
+        async function readAIStream(response, onDelta, deltaOf, textOf) {
+            if (/json/i.test(response.headers.get('content-type') || '')) {
+                return textOf(await response.json());
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let text = '';
+            let buffer = '';
+            let dataLines = [];
+            const dispatch = () => {
+                const payload = dataLines.join('\n');
+                dataLines = [];
+                if (!payload || payload === '[DONE]') return;
+                let event;
+                try { event = JSON.parse(payload); } catch (e) { return; }
+                // 生成中途出错时服务端在流里发 error 事件（例如 Claude 的 overloaded_error）
+                if (event.error) throw new Error(event.error.message || JSON.stringify(event.error));
+                const delta = deltaOf(event);
+                if (delta) {
+                    text += delta;
+                    onDelta(text);
+                }
+            };
+            // 空行结束一个事件；event:、id: 和以冒号开头的保活注释行都不需要
+            const handleLine = line => {
+                if (line.endsWith('\r')) line = line.slice(0, -1);
+                if (!line) dispatch();
+                else if (line.startsWith('data:')) dataLines.push(line.slice(line.startsWith('data: ') ? 6 : 5));
+            };
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    lines.forEach(handleLine);
+                }
+                buffer += decoder.decode();
+                if (buffer) handleLine(buffer);
+                dispatch();
+            } catch (e) {
+                reader.cancel().catch(() => {});
+                throw e;
+            }
+            return text || null;
         }
 
         // 每次 AI 请求允许返回的最大 token 数
@@ -20209,7 +20313,7 @@
                     ...finalMessages
                 ],
                 temperature: options.temperature || 0.7,
-                stream: options.stream || false
+                stream: !!(options.stream || options.onDelta)
             };
 
             const { response, errText } = await sendAIRequestWithTokenRetry(config, options, maxTokens => {
@@ -20231,9 +20335,12 @@
             if (options.stream) {
                 return response;
             }
-            
-            const data = await response.json();
-            return data.choices?.[0]?.message?.content || null;
+
+            const textOf = data => data.choices?.[0]?.message?.content || null;
+            if (options.onDelta) {
+                return await readAIStream(response, options.onDelta, event => event.choices?.[0]?.delta?.content, textOf);
+            }
+            return textOf(await response.json());
         }
 
         // 把 PDF 文本提取，作为"附件文本"拼到 messages 最后一条 user 内容前
@@ -20279,6 +20386,7 @@
                 messages,
             };
             if (systemPrompt) body.system = systemPrompt;
+            if (options.onDelta) body.stream = true;
             const { response, errText } = await sendAIRequestWithTokenRetry(config, options, maxTokens => {
                 body.max_tokens = maxTokens;
                 return fetch(config.url, {
@@ -20295,11 +20403,13 @@
             if (!response.ok) {
                 throw new Error(i18n('claude_api_error', response.status, errText));
             }
-            const data = await response.json();
-            if (Array.isArray(data.content)) {
-                return data.content.filter(x => x.type === 'text').map(x => x.text).join('');
+            const textOf = data => Array.isArray(data.content)
+                ? data.content.filter(x => x.type === 'text').map(x => x.text).join('') : null;
+            if (options.onDelta) {
+                return await readAIStream(response, options.onDelta, event =>
+                    event.type === 'content_block_delta' && event.delta?.type === 'text_delta' ? event.delta.text : '', textOf);
             }
-            return null;
+            return textOf(await response.json());
         }
 
         // 把 PDF 附件嵌入到 Claude messages 最后一条 user 消息里（document 块）
@@ -20416,7 +20526,8 @@
                 body.systemInstruction = { parts: [{ text: String(systemPrompt) }] };
             }
 
-            const url = base + '/models/' + encodeURIComponent(modelName) + ':generateContent?key=' + encodeURIComponent(config.key);
+            const method = options.onDelta ? ':streamGenerateContent?alt=sse&key=' : ':generateContent?key=';
+            const url = base + '/models/' + encodeURIComponent(modelName) + method + encodeURIComponent(config.key);
             const { response, errText } = await sendAIRequestWithTokenRetry(config, options, maxTokens => {
                 body.generationConfig.maxOutputTokens = maxTokens;
                 return fetch(url, {
@@ -20428,17 +20539,21 @@
             if (!response.ok) {
                 throw new Error(i18n('api_error', response.status, errText));
             }
-            const data = await response.json();
-            const candidate = data.candidates?.[0];
-            const finishReason = candidate?.finishReason;
-            if (finishReason && finishReason !== 'STOP') {
-                console.warn('Gemini finishReason:', finishReason, '— 输出可能被截断');
-            }
-            const parts = candidate?.content?.parts;
-            if (Array.isArray(parts) && parts.length > 0) {
-                return parts.map(p => p.text || '').join('');
-            }
-            return null;
+            // 流式时每个事件也是这种结构，只含新增的一段正文，最后一段带 finishReason
+            const textOf = data => {
+                const candidate = data.candidates?.[0];
+                const finishReason = candidate?.finishReason;
+                if (finishReason && finishReason !== 'STOP') {
+                    console.warn('Gemini finishReason:', finishReason, '— 输出可能被截断');
+                }
+                const parts = candidate?.content?.parts;
+                if (Array.isArray(parts) && parts.length > 0) {
+                    return parts.map(p => p.text || '').join('');
+                }
+                return null;
+            };
+            if (options.onDelta) return await readAIStream(response, options.onDelta, textOf, textOf);
+            return textOf(await response.json());
         }
 
         // 构造 Gemini contents，带 PDF。超过 18MB 走 Files API。
@@ -21073,6 +21188,10 @@ ${i18n('prompt_outline_gen')}`;
             if (chapter.status === 'generating') return; // 正在生成中，防止重复调用
 
             chapter.status = 'generating';
+            // 本次生成已收到的正文只放内存，讲义阅读器据此边生成边显示
+            const streamKey = lecContentKey(bookId, chapter.id);
+            const stream = { text: '' };
+            lectureStreams.set(streamKey, stream);
             saveData();
 
             // 如果用户正在查看，立刻刷新为"生成中"状态
@@ -21103,7 +21222,13 @@ ${i18n('prompt_lecture_gen')}`;
 
                 const result = await callAI(systemPrompt, [{ role: 'user', content: userMessage }], {
                     feature,
-                    pdfAttachment
+                    pdfAttachment,
+                    onDelta: text => {
+                        stream.text = text;
+                        if (currentLecture && currentLecture.bookId === bookId && currentLecture.chapterIndex === chapterIndex) {
+                            scheduleLectureStreamRender();
+                        }
+                    }
                 });
 
                 const contentText = result || i18n('toast_content_gen_failed');
@@ -21123,9 +21248,9 @@ ${i18n('prompt_lecture_gen')}`;
                 triggerSyncOnFileChange(lecContentKey(bookId, chapter.id), 'lecture_upload');
                 sendNotification(i18n('toast_lecture_synced'), chapter.title);
 
-                // 如果正在查看这个讲义，刷新显示
+                // 如果正在查看这个讲义，刷新显示；读者可能已经边生成边往下读，停在当前位置
                 if (currentLecture && currentLecture.bookId === bookId && currentLecture.chapterIndex === chapterIndex) {
-                    displayLectureContent();
+                    displayLectureContent({ keepScroll: true });
                 }
 
                 renderNotesPage();
@@ -21143,6 +21268,7 @@ ${i18n('prompt_lecture_gen')}`;
                 }
                 renderNotesPage();
             } finally {
+                if (lectureStreams.get(streamKey) === stream) lectureStreams.delete(streamKey);
                 activeLectureGenerationCount = Math.max(0, activeLectureGenerationCount - 1);
                 if (activeLectureGenerationCount === 0 && !r2SyncInProgress && r2PendingSyncQueue.length > 0) {
                     const lectureUploadIndex = r2PendingSyncQueue.findIndex(item =>
@@ -21157,6 +21283,9 @@ ${i18n('prompt_lecture_gen')}`;
 
         // 讲义阅读器状态
         let currentLecture = null;
+        // 正在生成的讲义章节已收到的正文（只在内存中，不写入 appData）：lecContentKey → { text }
+        const lectureStreams = new Map();
+        let _lectureStreamRenderTimer = null;
 
         async function openLecture(bookId, chapterIndex) {
             let lectureData = appData.lectures?.[bookId];
@@ -21215,14 +21344,23 @@ ${i18n('prompt_lecture_gen')}`;
             }
         }
 
-        async function displayLectureContent() {
+        // options.keepScroll：渲染完停在当前滚动位置，不恢复上次保存的阅读位置
+        async function displayLectureContent(options = {}) {
             if (!currentLecture) return;
             // 每次重新获取chapter，避免引用过期
             const lectureData = appData.lectures[currentLecture.bookId];
             const chapter = lectureData.chapters[currentLecture.chapterIndex];
             const container = document.getElementById('lectureViewerContent');
-            
+            const keptScrollTop = options.keepScroll ? container.scrollTop : null;
+
             if (chapter.status === 'generating') {
+                // 已经收到部分正文时边生成边显示，否则显示生成中提示
+                const streamKey = lecContentKey(currentLecture.bookId, chapter.id);
+                const streamText = lectureStreams.get(streamKey)?.text;
+                if (streamText) {
+                    renderLectureStream(container, streamKey, streamText);
+                    return;
+                }
                 container.innerHTML = `
                     <div class="generating-indicator">
                         <div class="generating-spinner"></div>
@@ -21288,50 +21426,8 @@ ${i18n('prompt_lecture_gen')}`;
                 return;
             }
             
-            // 渲染Markdown内容，保护LaTeX公式
-            let content = contentText;
-            
-            // 保护LaTeX公式，避免被Markdown处理破坏
-            const latexBlocks = [];
-            const latexInlines = [];
-            
-            // 保护 $$ ... $$ 块级公式
-            content = content.replace(/\$\$([\s\S]*?)\$\$/g, (match, p1) => {
-                latexBlocks.push(p1.trim());
-                return `%%LATEXBLOCK${latexBlocks.length - 1}%%`;
-            });
-            
-            // 保护 $ ... $ 行内公式 (不跨行)
-            content = content.replace(/\$([^\$\n]+?)\$/g, (match, p1) => {
-                latexInlines.push(p1.trim());
-                return `%%LATEXINLINE${latexInlines.length - 1}%%`;
-            });
-            
-            // 处理Markdown
-            let html = content
-                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-                .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/^- (.*$)/gm, '<li>$1</li>')
-                .replace(/^(\d+)\. (.*$)/gm, '<li>$2</li>')
-                .replace(/\n\n/g, '</p><p>')
-                .replace(/\n/g, '<br>');
-            
-            // 恢复LaTeX公式
-            html = html.replace(/%%LATEXBLOCK(\d+)%%/g, (match, idx) => {
-                const latex = latexBlocks[parseInt(idx)];
-                return `</p><div class="latex-display">$$${latex}$$</div><p>`;
-            });
-            
-            html = html.replace(/%%LATEXINLINE(\d+)%%/g, (match, idx) => {
-                const latex = latexInlines[parseInt(idx)];
-                return `$${latex}$`;
-            });
-            
-            container.innerHTML = '<div class="lecture-body"><p>' + html + '</p></div>';
-            
+            container.innerHTML = '<div class="lecture-body">' + lectureMarkdownHtml(contentText) + '</div>';
+
             // 添加绘制canvas
             const lectureBody = container.querySelector('.lecture-body');
             if (lectureBody) {
@@ -21354,13 +21450,112 @@ ${i18n('prompt_lecture_gen')}`;
             // 恢复滚动位置（程序化滚动，不计入阅读进度）
             if (einkMode) {
                 einkLectureCurrentPage = 0;
-                setLectureScrollTop(container, 0);
+                setLectureScrollTop(container, keptScrollTop ?? 0);
                 setTimeout(function() { einkUpdateLecturePages(); }, 100);
             } else {
-                setLectureScrollTop(container, chapter.scrollPosition || 0);
+                setLectureScrollTop(container, keptScrollTop ?? (chapter.scrollPosition || 0));
             }
         }
-        
+
+        // 讲义 Markdown 转 HTML（外层 <p>），先保护 LaTeX 公式，避免被 Markdown 处理破坏
+        function lectureMarkdownHtml(contentText) {
+            let content = contentText;
+            const latexBlocks = [];
+            const latexInlines = [];
+
+            // 保护 $$ ... $$ 块级公式
+            content = content.replace(/\$\$([\s\S]*?)\$\$/g, (match, p1) => {
+                latexBlocks.push(p1.trim());
+                return `%%LATEXBLOCK${latexBlocks.length - 1}%%`;
+            });
+
+            // 保护 $ ... $ 行内公式 (不跨行)
+            content = content.replace(/\$([^\$\n]+?)\$/g, (match, p1) => {
+                latexInlines.push(p1.trim());
+                return `%%LATEXINLINE${latexInlines.length - 1}%%`;
+            });
+
+            // 处理Markdown
+            let html = content
+                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^- (.*$)/gm, '<li>$1</li>')
+                .replace(/^(\d+)\. (.*$)/gm, '<li>$2</li>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+
+            // 恢复LaTeX公式
+            html = html.replace(/%%LATEXBLOCK(\d+)%%/g, (match, idx) => {
+                const latex = latexBlocks[parseInt(idx)];
+                return `</p><div class="latex-display">$$${latex}$$</div><p>`;
+            });
+
+            html = html.replace(/%%LATEXINLINE(\d+)%%/g, (match, idx) => {
+                const latex = latexInlines[parseInt(idx)];
+                return `$${latex}$`;
+            });
+
+            return '<p>' + html + '</p>';
+        }
+
+        // 流式正文中已经完整、可以定稿的长度：截到最后一个空行为止，且该处不在 $$ 公式块内
+        function lectureStreamStableLength(text) {
+            for (let cut = text.lastIndexOf('\n\n'); cut >= 0; cut = text.lastIndexOf('\n\n', cut - 1)) {
+                if ((text.slice(0, cut).match(/\$\$/g) || []).length % 2 === 0) return cut + 2;
+            }
+            return 0;
+        }
+
+        // 生成中的讲义边收边显示：完整的段落渲染一次后保留，之后只追加新完成的段落、重画末尾未完成的一段，
+        // 长讲义不必每次整篇重排和重新渲染公式，已显示部分的滚动位置和选区也不受影响。
+        function renderLectureStream(container, key, text) {
+            let body = container.querySelector('.lecture-body');
+            // 换了章节，或主要 API 中途失败、备用 API 从头重新生成时整段重建
+            if (!body || body._streamKey !== key || !text.startsWith(body._streamDoneText)) {
+                container.innerHTML = `
+                    <div class="lecture-body"><div class="lecture-stream-tail"></div></div>
+                    <div class="generating-indicator">
+                        <div class="generating-spinner"></div>
+                        <span>${i18n('generating_lecture_content')}</span>
+                    </div>`;
+                body = container.querySelector('.lecture-body');
+                body._streamKey = key;
+                body._streamDoneText = '';
+            }
+            const tail = body.querySelector('.lecture-stream-tail');
+            const doneLength = lectureStreamStableLength(text);
+            if (doneLength > body._streamDoneText.length) {
+                const chunk = text.slice(body._streamDoneText.length, doneLength).replace(/^\n+|\n+$/g, '');
+                if (chunk.trim()) {
+                    const block = document.createElement('div');
+                    block.innerHTML = lectureMarkdownHtml(chunk);
+                    body.insertBefore(block, tail);
+                    renderLectureMath(block);
+                }
+                body._streamDoneText = text.slice(0, doneLength);
+            }
+            tail.innerHTML = lectureMarkdownHtml(text.slice(doneLength));
+            renderLectureMath(tail);
+            if (einkMode) einkUpdateLecturePages();
+        }
+
+        // 合并流式更新再重画：普通屏最多每 0.3 秒一次，墨水屏每 1 秒一次
+        function scheduleLectureStreamRender() {
+            if (_lectureStreamRenderTimer) return;
+            _lectureStreamRenderTimer = setTimeout(() => {
+                _lectureStreamRenderTimer = null;
+                const chapter = currentLecture?.bookId
+                    ? appData.lectures?.[currentLecture.bookId]?.chapters[currentLecture.chapterIndex] : null;
+                if (chapter?.status !== 'generating') return;
+                const key = lecContentKey(currentLecture.bookId, chapter.id);
+                const text = lectureStreams.get(key)?.text;
+                if (text) renderLectureStream(document.getElementById('lectureViewerContent'), key, text);
+            }, einkMode ? 1000 : 300);
+        }
+
         function renderLectureMath(element) {
             if (window.renderMathInElement) {
                 try {
@@ -21502,6 +21697,8 @@ ${i18n('prompt_lecture_gen')}`;
             if (currentLecture.isClassroomNote) { updateClassroomNoteProgress(); return; }
             if (currentLecture.isPaperAbstract) return;
             if (!currentLecture.bookId || !appData.lectures[currentLecture.bookId]) return;
+            // 正文还在边生成边显示，高度一直在变，生成完成前不计算阅读进度
+            if (appData.lectures[currentLecture.bookId].chapters[currentLecture.chapterIndex]?.status === 'generating') return;
             const container = document.getElementById('lectureViewerContent');
             const scrollHeight = container.scrollHeight - container.clientHeight;
             const progress = scrollHeight > 0 ? Math.round((container.scrollTop / scrollHeight) * 100) : 100;
