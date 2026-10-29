@@ -43,15 +43,20 @@ const LECTURE_STRUCTURE = `请严格按以下三个部分组织，每节按 1 �
 - 直接陈述数学内容
 - 使用LaTeX格式：行内公式用 $...$ ，独立公式用 $$...$$`;
 
-const VISUALIZATION_RULES = `## 配图
-
-在以上三个部分完整写出的基础上配图。配图是补充：定义、定理陈述、证明步骤和习题都不因为有图而省略，去掉所有图后讲义仍然完整。
-用 Claude 的内置可视化在回复中直接画图（静态图或可交互的图），不用 ASCII 字符画，也不用代码块代替图。
-- 几何构造、映射与变换、函数与曲线族、极限与收敛过程、证明中的构造步骤配图；图放在它解释的文字之后。
-- 依赖数值的图（函数图像、参数曲线、隐函数、向量场与相图、迭代与收敛、复平面着色、共形映射、带参数的几何）由代码按讲义中的公式计算坐标，不手估坐标；尖峰和振荡处加密采样，间断处断开曲线。
+// 写讲义和为已有讲义配图共用的画图要求
+const FIGURE_HOW = '用 Claude 的内置可视化在回复中直接画图（静态图或可交互的图），不用 ASCII 字符画，也不用代码块代替图。';
+const FIGURE_SUBJECTS = '几何构造、映射与变换、函数与曲线族、极限与收敛过程、证明中的构造步骤';
+const FIGURE_ACCURACY = `- 依赖数值的图（函数图像、参数曲线、隐函数、向量场与相图、迭代与收敛、复平面着色、共形映射、带参数的几何）由代码按讲义中的公式计算坐标，不手估坐标；尖峰和振荡处加密采样，间断处断开曲线。
 - 几何图横纵同一比例尺；极值、交点、不动点等关键点按公式算出后再标注。
 - 参数变化有助于理解时做成带滑块的交互图。
 - 图中的标注、数值和比例与正文一致。`;
+
+const VISUALIZATION_RULES = `## 配图
+
+在以上三个部分完整写出的基础上配图。配图是补充：定义、定理陈述、证明步骤和习题都不因为有图而省略，去掉所有图后讲义仍然完整。
+${FIGURE_HOW}
+- ${FIGURE_SUBJECTS}配图；图放在它解释的文字之后。
+${FIGURE_ACCURACY}`;
 
 /** 完整的讲义要求。write_lecture 提示模板、书库界面的“写讲义”和服务器说明共用。 */
 const LECTURE_REQUIREMENTS = `${LECTURE_ROLE}\n\n${LECTURE_STRUCTURE}\n\n${VISUALIZATION_RULES}`;
@@ -59,6 +64,7 @@ const LECTURE_REQUIREMENTS = `${LECTURE_ROLE}\n\n${LECTURE_STRUCTURE}\n\n${VISUA
 export const SERVER_INSTRUCTIONS = [
   'Math Reader 连接器读取用户 math-reader 书库（Cloudflare R2）里的书目、大纲、书页图片和 math-reader 已生成的讲义，全部只读。',
   '用户想浏览书库、找书或挑选章节时调用 show_library：对话里会显示书库卡片，用户在全屏选择器里点书、点节后点“写讲义”，会发来带页码范围的请求；用户选中的书和节也会作为上下文告诉你。',
+  '为 math-reader 已经写好的讲义配图时（get_outline 标着“math-reader 已有讲义”的节），用 read_lecture 读讲义，不重写讲义，只出配套的图。',
   `为某一节写讲义的流程：list_documents 找到书的 id → get_outline 得到这一节的页码范围和主题 → read_pages 读完这一节的全部页面（${READ_ALL}）→ 按下面的要求写讲义。`,
   '',
   LECTURE_REQUIREMENTS,
@@ -93,4 +99,33 @@ ${p.topicsLine}
 先用 read_pages 读完第 ${p.startPage}–${p.endPage} 页（${READ_ALL}），再写讲义。
 
 ${LECTURE_REQUIREMENTS}`;
+}
+
+/**
+ * 为 math-reader 已经写好的讲义配图的请求，书库界面点“配图”时发送。
+ * chapterIndex 是 get_outline 的节序号（从 0 开始），read_lecture 用它找讲义。
+ */
+export function figureRequest(p: {
+  document: string;
+  id: string;
+  part: string;
+  chapterIndex: string;
+  startPage: string;
+  endPage: string;
+}): string {
+  return `为 Math Reader 书库中已经写好的一节讲义配图。
+
+书籍：《${p.document}》（id: ${p.id}）
+章节：${p.part}
+对应页码：第 ${p.startPage} - ${p.endPage} 页
+
+先用 read_lecture 读取 math-reader 为这一节写好的讲义（document: ${p.id}，chapter_index: ${p.chapterIndex}）。讲义正文已经完整，不重写、不复述、不修改，只为它配图。需要核对原书时，用 read_pages 读第 ${p.startPage}–${p.endPage} 页。
+
+按讲义的顺序（预习、大纲、习题）找出需要配图的地方：${FIGURE_SUBJECTS}，以及其他借助图形更容易理解的定义、定理和习题。每张图按下面的格式给出：
+1. 位置：“图 k”，写明它对应讲义的哪一部分、哪一条（例如“二、大纲 · 定理 2 的证明”），并引用那里的一句原文，方便在讲义里找到；
+2. 图；
+3. 一两句说明：图中画的是什么，对应讲义里的哪个式子或哪一步论证。记号与讲义一致。
+
+${FIGURE_HOW}
+${FIGURE_ACCURACY}`;
 }

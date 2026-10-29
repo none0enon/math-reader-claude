@@ -199,11 +199,12 @@
     text-align: center;
   }
 
-  .foot { flex: none; justify-content: space-between; border-top: var(--mr-bw) solid var(--mr-border-2); }
-  .selection { display: flex; flex-direction: column; min-width: 0; }
+  .foot { flex: none; flex-wrap: wrap; justify-content: flex-end; border-top: var(--mr-bw) solid var(--mr-border-2); }
+  .selection { flex: 1 1 200px; display: flex; flex-direction: column; min-width: 0; }
   .sel-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .sel-text.muted { color: var(--mr-text-3); }
   .sel-warn { color: var(--mr-warn); font-size: var(--mr-xs); }
+  .sel-info { color: var(--mr-info); font-size: var(--mr-xs); }
 
   #toast {
     position: fixed;
@@ -259,6 +260,7 @@
     </div>
     <div class="bar foot">
       <div class="selection" id="selection"></div>
+      <button class="btn" id="figures" type="button" hidden>为讲义配图</button>
       <button class="btn primary" id="write" type="button" disabled>写讲义</button>
     </div>
   </section>
@@ -269,6 +271,8 @@
   const SDK_URL = 'https://unpkg.com/@modelcontextprotocol/ext-apps@1.7.5/dist/src/app-with-deps.js';
   // 写讲义请求的模板，由服务器在下发界面时填入；{{document}} {{id}} {{part}} {{start}} {{end}} {{topicsLine}} 由界面替换
   const LECTURE_TEMPLATE = /*LECTURE_TEMPLATE*/"";
+  // 为 math-reader 已有讲义配图的请求模板；{{document}} {{id}} {{part}} {{chapterIndex}} {{start}} {{end}} 由界面替换
+  const FIGURE_TEMPLATE = /*FIGURE_TEMPLATE*/"";
   // 窄于这个宽度时，书目和章节分两步显示
   const SINGLE_PANE_WIDTH = 640;
 
@@ -286,6 +290,7 @@
     books: $('books'),
     chapters: $('chapters'),
     selection: $('selection'),
+    figures: $('figures'),
     write: $('write'),
     toast: $('toast'),
   };
@@ -307,7 +312,7 @@
     outlineLoading: new Set(),
     outlineErrors: new Map(),
     ranges: new Map(),
-    sending: false,
+    sending: null, // null | 'write' | 'figures'
     refreshing: false,
     lastSent: '',
   };
@@ -490,7 +495,7 @@
       summary.textContent = summaryText();
     }
     els.cardNote.hidden = !state.lastSent;
-    els.cardNote.textContent = state.lastSent ? '已发送写讲义请求：' + state.lastSent : '';
+    els.cardNote.textContent = state.lastSent ? '已发送：' + state.lastSent : '';
     els.openPicker.hidden = state.status !== 'ready' || !state.view.documents.length;
     els.cardRetry.hidden = state.status !== 'error' || !app;
     els.cardRetry.disabled = state.refreshing;
@@ -661,12 +666,18 @@
     let text;
     if (target) text = target.display;
     else text = state.bookId && !listingBooks ? '选一节，或按页码选范围' : '先选一本书，再选一节';
+    const figure = state.status === 'ready' ? figureTarget() : null;
     els.selection.replaceChildren(
       h('span', { class: target ? 'sel-text' : 'sel-text muted', text, title: text }),
       target?.error ? h('span', { class: 'sel-warn', text: target.error }) : null,
+      figure ? h('span', { class: 'sel-info', text: 'math-reader 已有这一节的讲义，可以直接为它配图' }) : null,
     );
-    els.write.disabled = !app || !target || !!target.error || state.sending;
-    els.write.textContent = state.sending ? '发送中…' : '写讲义';
+    els.write.disabled = !app || !target || !!target.error || !!state.sending;
+    els.write.textContent = state.sending === 'write' ? '发送中…' : '写讲义';
+    // 配图只读 math-reader 已有的讲义，不要求书页已同步
+    els.figures.hidden = !figure;
+    els.figures.disabled = !app || !!state.sending;
+    els.figures.textContent = state.sending === 'figures' ? '发送中…' : '为讲义配图';
   }
 
   // 只更新选中状态和底栏，不重建列表（正在输入的页码框保持焦点）
@@ -727,27 +738,27 @@
     render();
   }
 
-  async function requestLecture() {
-    const target = currentTarget();
-    if (!app || !target || target.error || state.sending) return;
-    const values = {
-      document: target.doc.title,
-      id: target.doc.id,
-      part: target.part,
-      start: target.start,
-      end: target.end,
-      topicsLine: target.topics?.length ? `涉及主题：${target.topics.join('、')}\n` : '',
-    };
+  // 选中的节有 math-reader 讲义时可以只为讲义配图
+  function figureTarget() {
+    const doc = bookById(state.bookId);
+    if (!doc || state.selection?.kind !== 'chapter') return null;
+    const ch = (chaptersOf(doc) || []).find((c) => c.index === state.selection.index);
+    if (!ch?.hasLecture) return null;
+    return { doc, ch, part: `第 ${ch.index + 1} 节“${ch.title}”` };
+  }
+
+  // 填好模板发进对话，发完回到对话里的卡片
+  async function sendRequest(kind, template, values, sentLabel) {
     // 一次替换全部占位符，书名里出现 {{...}} 也不会被再次替换
-    const text = LECTURE_TEMPLATE.replace(/\{\{(\w+)\}\}/g, (match, name) =>
+    const text = template.replace(/\{\{(\w+)\}\}/g, (match, name) =>
       Object.hasOwn(values, name) ? String(values[name]) : match);
-    state.sending = true;
+    state.sending = kind;
     renderFooter();
     try {
       const result = await app.sendMessage({ role: 'user', content: [{ type: 'text', text }] });
       if (result?.isError) throw new Error('Claude 没有接收这条消息');
-      state.lastSent = target.display;
-      toast('已发送写讲义请求');
+      state.lastSent = sentLabel;
+      toast('已发送');
       if (state.displayMode === 'fullscreen') {
         try {
           const back = await app.requestDisplayMode({ mode: 'inline' });
@@ -759,9 +770,37 @@
     } catch (error) {
       toast('发送失败：' + (error?.message || error));
     } finally {
-      state.sending = false;
+      state.sending = null;
       render();
     }
+  }
+
+  function requestLecture() {
+    const target = currentTarget();
+    if (!app || !target || target.error || state.sending) return;
+    sendRequest('write', LECTURE_TEMPLATE, {
+      document: target.doc.title,
+      id: target.doc.id,
+      part: target.part,
+      start: target.start,
+      end: target.end,
+      topicsLine: target.topics?.length ? `涉及主题：${target.topics.join('、')}\n` : '',
+    }, '写讲义 ' + target.display);
+  }
+
+  function requestFigures() {
+    const target = figureTarget();
+    if (!app || !target || state.sending) return;
+    const { doc, ch, part } = target;
+    const pages = validRange(ch.startPage, ch.endPage);
+    sendRequest('figures', FIGURE_TEMPLATE, {
+      document: doc.title,
+      id: doc.id,
+      part,
+      chapterIndex: ch.index,
+      start: pages ? ch.startPage : '?',
+      end: pages ? ch.endPage : '?',
+    }, `为讲义配图 《${doc.title}》${part}`);
   }
 
   // 选中的书和节告诉 Claude，之后在对话框里直接说“这一节……”也能对上
@@ -838,6 +877,7 @@
   els.cardRetry.addEventListener('click', refresh);
   els.refresh.addEventListener('click', refresh);
   els.write.addEventListener('click', requestLecture);
+  els.figures.addEventListener('click', requestFigures);
   els.search.addEventListener('input', () => {
     state.query = els.search.value;
     if (layout() !== 'card') renderPicker();
