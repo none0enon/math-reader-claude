@@ -100,13 +100,14 @@ export async function buildLibraryView(env: Env, index: LibraryIndex): Promise<L
   return { updatedAt: index.updatedAt ?? null, documents };
 }
 
-// 写讲义请求的模板随界面下发，界面填入书名、id、节和页码
+// 写讲义请求的模板随界面下发，界面填入书名、id、节、页码和主题行
 const LECTURE_TEMPLATE = lectureRequest({
   document: '{{document}}',
   id: '{{id}}',
   part: '{{part}}',
   startPage: '{{start}}',
   endPage: '{{end}}',
+  topicsLine: '{{topicsLine}}',
 });
 
 export function libraryUiHtml(): string {

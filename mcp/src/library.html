@@ -267,7 +267,7 @@
 
 <script type="module">
   const SDK_URL = 'https://unpkg.com/@modelcontextprotocol/ext-apps@1.7.5/dist/src/app-with-deps.js';
-  // 写讲义请求的模板，由服务器在下发界面时填入；{{document}} {{id}} {{part}} {{start}} {{end}} 由界面替换
+  // 写讲义请求的模板，由服务器在下发界面时填入；{{document}} {{id}} {{part}} {{start}} {{end}} {{topicsLine}} 由界面替换
   const LECTURE_TEMPLATE = /*LECTURE_TEMPLATE*/"";
   // 窄于这个宽度时，书目和章节分两步显示
   const SINGLE_PANE_WIDTH = 640;
@@ -423,7 +423,7 @@
         return { doc, part, display: `《${doc.title}》${part}`, error: '大纲里缺少这一节的页码，可以改用按页码' };
       }
       target = {
-        doc, part, start: ch.startPage, end: ch.endPage,
+        doc, part, start: ch.startPage, end: ch.endPage, topics: ch.topics || [],
         display: `《${doc.title}》${part} · 第 ${ch.startPage}–${ch.endPage} 页`,
       };
     } else {
@@ -730,7 +730,14 @@
   async function requestLecture() {
     const target = currentTarget();
     if (!app || !target || target.error || state.sending) return;
-    const values = { document: target.doc.title, id: target.doc.id, part: target.part, start: target.start, end: target.end };
+    const values = {
+      document: target.doc.title,
+      id: target.doc.id,
+      part: target.part,
+      start: target.start,
+      end: target.end,
+      topicsLine: target.topics?.length ? `涉及主题：${target.topics.join('、')}\n` : '',
+    };
     // 一次替换全部占位符，书名里出现 {{...}} 也不会被再次替换
     const text = LECTURE_TEMPLATE.replace(/\{\{(\w+)\}\}/g, (match, name) =>
       Object.hasOwn(values, name) ? String(values[name]) : match);
