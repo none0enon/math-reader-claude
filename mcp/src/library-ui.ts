@@ -1,6 +1,6 @@
 import type { Env } from './env';
 import { loadManifest, syncedThrough, type LibraryDocument, type LibraryIndex } from './library';
-import { lectureRequest } from './lecture';
+import { figureRequest, lectureRequest } from './lecture';
 import libraryHtml from './library.html';
 
 // show_library 的界面（MCP Apps）：claude.ai 在对话里以沙箱 iframe 显示 library.html，
@@ -100,17 +100,33 @@ export async function buildLibraryView(env: Env, index: LibraryIndex): Promise<L
   return { updatedAt: index.updatedAt ?? null, documents };
 }
 
-// 写讲义请求的模板随界面下发，界面填入书名、id、节和页码
+// 写讲义请求的模板随界面下发，界面填入书名、id、节、页码和主题行
 const LECTURE_TEMPLATE = lectureRequest({
   document: '{{document}}',
   id: '{{id}}',
   part: '{{part}}',
   startPage: '{{start}}',
   endPage: '{{end}}',
+  topicsLine: '{{topicsLine}}',
 });
 
+// 为 math-reader 已有讲义配图的请求模板
+const FIGURE_TEMPLATE = figureRequest({
+  document: '{{document}}',
+  id: '{{id}}',
+  part: '{{part}}',
+  chapterIndex: '{{chapterIndex}}',
+  startPage: '{{start}}',
+  endPage: '{{end}}',
+});
+
+// 转义 <，模板文字里出现 </script> 也不会提前结束脚本
+function scriptString(text: string): string {
+  return JSON.stringify(text).replace(/</g, '\\u003c');
+}
+
 export function libraryUiHtml(): string {
-  // 转义 <，模板文字里出现 </script> 也不会提前结束脚本
-  const json = JSON.stringify(LECTURE_TEMPLATE).replace(/</g, '\\u003c');
-  return libraryHtml.replace('/*LECTURE_TEMPLATE*/""', () => json);
+  return libraryHtml
+    .replace('/*LECTURE_TEMPLATE*/""', () => scriptString(LECTURE_TEMPLATE))
+    .replace('/*FIGURE_TEMPLATE*/""', () => scriptString(FIGURE_TEMPLATE));
 }
