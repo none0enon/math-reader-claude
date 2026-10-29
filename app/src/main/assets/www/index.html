@@ -26866,11 +26866,8 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 container.scrollTop = 0;
                 setTimeout(function() { einkUpdateLecturePages(); }, 100);
             }
-
-            // Update scroll progress
-            container.onscroll = function() {
-                updateClassroomNoteProgress();
-            };
+            // 滚动进度由 #lectureViewerContent 自带的 onscroll（updateLectureProgress）处理，它会转给
+            // updateClassroomNoteProgress。这里不能改写 onscroll，否则之后打开的书籍讲义不再记录进度。
         }
 
         function updateClassroomNoteProgress() {
