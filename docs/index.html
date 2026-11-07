@@ -8154,8 +8154,6 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                 for (const ch of ld.chapters) {
                     delete ch.content;
                     delete ch._contentCache;
-                    // “生成中”只在发起生成的那次运行里有效，传到云端或导出后，别处打开时会一直等下去
-                    if (ch.status === 'generating') ch.status = 'pending';
                 }
             }
             return stripped;
@@ -8769,7 +8767,6 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     if (!appData.notebooks.reviews) appData.notebooks.reviews = [];
                     if (!appData.settings) appData.settings = {};
                     if (appData.settings.photoRetentionDays === undefined) appData.settings.photoRetentionDays = 0;
-                    resetStaleLectureGeneration();
                     appDataLoaded = true;
                 } catch(e) {
                     console.error('[loadData] 主数据损坏，尝试从备份恢复:', e);
@@ -8855,7 +8852,6 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     if (!appData.notebooks) appData.notebooks = { items: [], reviews: [] };
                     if (!appData.notebooks.items) appData.notebooks.items = [];
                     if (!appData.notebooks.reviews) appData.notebooks.reviews = [];
-                    resetStaleLectureGeneration();
                     // 写回 localStorage（不含 exercises）
                     try { localStorage.setItem('mathReader', JSON.stringify(appData)); } catch(e2) {}
                     appDataLoaded = true;
@@ -14790,7 +14786,6 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                             appData.lectures,
                             cloudSyncedAtMs
                         );
-                        resetStaleLectureGeneration();
                         appData.drafts = mergePreferNonEmpty(metadata.drafts, appData.drafts);
 
                         // 合并 classroom 数据，避免覆盖另一设备新增的素材和笔记；
@@ -15458,7 +15453,6 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     appData.classroom = applied;
                     appData.lectures = mergeLecturesData(candidate.lectures, appData.lectures,
                         Date.parse(candidate.syncedAt) || 0);
-                    resetStaleLectureGeneration();
                     appData.notebooks = mergeNotebooksData(candidate.notebooks, appData.notebooks,
                         Date.parse(candidate.syncedAt) || 0);
                     if (!options.classroomOnly) {
@@ -18029,7 +18023,6 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     repairMetadataAfterStartup = true;
                 }
                 appData.lectures = mergedLectures;
-                resetStaleLectureGeneration();
                 appData.drafts = mergePreferNonEmpty(metadata.drafts, appData.drafts);
                 appData.classroomTombstones = mergeClassroomTombstones(
                     metadata.classroomTombstones, appData.classroomTombstones);
@@ -18462,7 +18455,6 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     localLecturesBeforeRestore,
                     cloudRestoreSyncedAtMs
                 );
-                resetStaleLectureGeneration();
                 appData.drafts = metadata.drafts || {};
                 const cloudClassroomForRestore = applyClassroomOutboxTombstones(
                     metadata.classroom, restoreTombstones);
@@ -21584,31 +21576,27 @@ ${i18n('prompt_lecture_gen')}`;
                     }
                 });
 
-                // 生成期间这一节已被删除（例如重新生成了大纲、删掉了讲义），丢弃结果
-                if (!findLectureChapter(bookId, chapterId)) return;
                 const contentText = result || i18n('toast_content_gen_failed');
-                const generatedAt = new Date().toISOString();
+                // 结果写到 appData 里当前的章节对象上；找不到（这一节已被删除）时和原来一样写在原对象上
+                const target = findLectureChapter(bookId, chapterId) || { lectureData, chapter };
+                target.chapter.status = 'ready';
+                target.chapter.generatedAt = new Date().toISOString();
+                target.chapter.updatedAt = target.chapter.generatedAt;
+                target.chapter.contentUpdatedAt = target.chapter.generatedAt;
+                target.lectureData.updatedAt = target.chapter.generatedAt;
                 // 内容存入 IndexedDB，不放 localStorage
-                await saveLectureContent(bookId, chapterId, contentText, generatedAt);
-                const live = findLectureChapter(bookId, chapterId);
-                if (live) {
-                    live.chapter.status = 'ready';
-                    live.chapter.generatedAt = generatedAt;
-                    live.chapter.updatedAt = generatedAt;
-                    live.chapter.contentUpdatedAt = generatedAt;
-                    live.lectureData.updatedAt = generatedAt;
-                    // 同时在内存中缓存，供当前会话直接使用
-                    live.chapter._contentCache = contentText;
-                }
-                endStream();
+                await saveLectureContent(bookId, chapter.id, contentText, target.chapter.contentUpdatedAt);
+                // 同时在内存中缓存，供当前会话直接使用
+                target.chapter._contentCache = contentText;
                 saveData();
                 showToast(i18n('toast_lecture_synced'));
                 // 讲义正文单独同步到云端；lecture_upload 提交正文后自己会发布 metadata，
                 // 这里不再另外触发一次 metadata 同步。
-                triggerSyncOnFileChange(streamKey, 'lecture_upload');
+                triggerSyncOnFileChange(lecContentKey(bookId, chapter.id), 'lecture_upload');
                 sendNotification(i18n('toast_lecture_synced'), chapter.title);
 
                 // 如果正在查看这个讲义，刷新显示；读者可能已经边生成边往下读，停在当前位置
+                endStream();
                 if (isViewing()) displayLectureContent({ keepScroll: true });
                 // 没能边生成边显示时说明原因
                 const notice = stream.fallback ? { kind: 'fallback', ...stream.fallback } : stream.notice;
@@ -21618,16 +21606,14 @@ ${i18n('prompt_lecture_gen')}`;
 
             } catch (err) {
                 console.error('生成章节内容失败:', err);
-                const live = findLectureChapter(bookId, chapterId);
-                if (live) {
-                    live.chapter.status = 'error';
-                    live.chapter.updatedAt = new Date().toISOString();
-                    live.lectureData.updatedAt = live.chapter.updatedAt;
-                }
-                endStream();
+                const target = findLectureChapter(bookId, chapterId) || { lectureData, chapter };
+                target.chapter.status = 'error';
+                target.chapter.updatedAt = new Date().toISOString();
+                target.lectureData.updatedAt = target.chapter.updatedAt;
                 saveData();
                 showToast(i18n('toast_gen_failed') + err.message);
                 // 刷新讲义界面，让用户看到错误状态而非一直转圈
+                endStream();
                 if (isViewing()) displayLectureContent();
                 renderNotesPage();
             } finally {
@@ -21693,43 +21679,6 @@ ${i18n('prompt_lecture_gen')}`;
             _aiStreamNoticeTimer = setTimeout(() => el.classList.remove('show'), 10000);
         }
 
-        // 没有生成任务对应的“生成中”章节改回待生成，打开时会重新生成。读入本地数据、合并云端数据后调用
-        function resetStaleLectureGeneration() {
-            for (const [bookId, lectureData] of Object.entries(appData.lectures || {})) {
-                for (const chapter of (lectureData?.chapters || [])) {
-                    if (chapter?.status === 'generating' && !lectureChapterInFlight(bookId, chapter)) {
-                        chapter.status = 'pending';
-                    }
-                }
-            }
-        }
-
-        // 旧版本生成期间遇到云同步合并时，正文已经存进 IndexedDB，章节状态却没有更新，之后一直停在
-        // “生成中”或“待生成”。本地正文比章节最近一次改动更新时按已生成恢复，不再重新生成。
-        async function recoverGeneratedLectureChapter(bookId, chapterId) {
-            if (!chapterId) return false;
-            const found = findLectureChapter(bookId, chapterId);
-            if (!found || found.chapter.status === 'ready') return false;
-            const savedAt = await getLectureContentUpdatedAt(bookId, chapterId);
-            if (!savedAt || savedAt <= lectureStructureTimestamp(found.chapter)) return false;
-            const content = await getLectureContent(bookId, chapterId).catch(() => null);
-            const live = findLectureChapter(bookId, chapterId);
-            if (!content || !live || live.chapter.status === 'ready' ||
-                lectureChapterInFlight(bookId, live.chapter) ||
-                savedAt <= lectureStructureTimestamp(live.chapter)) return false;
-            const recoveredAt = new Date(savedAt).toISOString();
-            live.chapter.status = 'ready';
-            live.chapter.generatedAt = recoveredAt;
-            live.chapter.updatedAt = recoveredAt;
-            live.chapter.contentUpdatedAt = recoveredAt;
-            live.chapter._contentCache = content;
-            if (syncTimestamp(live.lectureData.updatedAt) < savedAt) live.lectureData.updatedAt = recoveredAt;
-            saveData();
-            // 云端的章节状态也一并改成已生成
-            triggerSyncOnFileChange(lecContentKey(bookId, chapterId), 'lecture_upload');
-            return true;
-        }
-
         async function openLecture(bookId, chapterIndex) {
             let lectureData = appData.lectures?.[bookId];
             // 如果 lectureData 尚未初始化（用户刚生成大纲但还没点"生成讲义"），
@@ -21761,9 +21710,8 @@ ${i18n('prompt_lecture_gen')}`;
                 } catch(e) {}
             }
             
-            // 如果内容未生成，先生成；旧版本留下的“正文已存好、状态没更新”的章节直接恢复
-            if (chapter.status !== 'ready' && !lectureChapterInFlight(bookId, chapter) &&
-                !await recoverGeneratedLectureChapter(bookId, chapter.id)) {
+            // 如果内容未生成，先生成（是否正在生成以本次运行里的生成任务为准）
+            if (chapter.status !== 'ready' && !lectureChapterInFlight(bookId, chapter)) {
                 generateChapterContent(bookId, chapterIndex, 'lecture_open_generate');
             }
             
