@@ -6,8 +6,6 @@ import libraryHtml from './library.html';
 // show_library 的界面（MCP Apps）：claude.ai 在对话里以沙箱 iframe 显示 library.html，
 // 数据由工具结果的 structuredContent 传入（不进入模型上下文）。
 
-export const LIBRARY_UI_URI = 'ui://math-reader/library.html';
-
 // CSP 放行两个来源：unpkg 提供界面脚本（版本和完整性哈希固定在 library.html），
 // assets.claude.ai 提供 Claude 的界面字体。不要宿主的边框，界面自己画卡片，背景透明。
 export const LIBRARY_UI_META = {
@@ -125,8 +123,24 @@ function scriptString(text: string): string {
   return JSON.stringify(text).replace(/</g, '\\u003c');
 }
 
+const LIBRARY_UI_HTML = libraryHtml
+  .replace('/*LECTURE_TEMPLATE*/""', () => scriptString(LECTURE_TEMPLATE))
+  .replace('/*FIGURE_TEMPLATE*/""', () => scriptString(FIGURE_TEMPLATE));
+
+// FNV-1a 32 位哈希，只用来给界面地址标版本
+function contentHash(text: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+// claude.ai 按地址缓存界面 HTML。地址带上内容哈希：界面或请求模板（含讲义和配图要求）一改，
+// 地址随之改变，客户端重新读取，不会继续用旧缓存发出旧模板。
+export const LIBRARY_UI_URI = `ui://math-reader/library-${contentHash(LIBRARY_UI_HTML)}.html`;
+
 export function libraryUiHtml(): string {
-  return libraryHtml
-    .replace('/*LECTURE_TEMPLATE*/""', () => scriptString(LECTURE_TEMPLATE))
-    .replace('/*FIGURE_TEMPLATE*/""', () => scriptString(FIGURE_TEMPLATE));
+  return LIBRARY_UI_HTML;
 }
