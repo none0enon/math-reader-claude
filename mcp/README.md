@@ -21,7 +21,7 @@
 | `read_pages` | 以图片返回书页（PDF 物理页码） |
 | `read_lecture` | 读取 math-reader 此前生成的讲义正文 |
 | `open_library`（提示模板“打开书库”） | 不用填参数，发出后 Claude 调用 `show_library` 显示书库界面 |
-| `write_lecture`（提示模板） | 读完一节后按 math-reader 的讲义结构（预习、大纲、习题）写讲义，并用内置可视化配图 |
+| `write_lecture`（提示模板） | 读完一节后按 math-reader 的讲义结构（预习、大纲、习题）写讲义，并用内置可视化配图：尽量做成读者可调数值的交互图，复变函数不用 domain coloring |
 
 `show_library` 的界面用 MCP Apps（`@modelcontextprotocol/ext-apps`）实现，在 claude.ai 网页版、桌面端和手机端的对话里显示，按 Claude 的界面规范：对话里只放一张不滚动的小卡片，长列表放在全屏里；界面脚本从 unpkg.com 加载（版本和完整性哈希固定），字体取自 assets.claude.ai。界面数据放在工具结果的 `structuredContent` 里，不占模型上下文；大纲总量较大时，其余书的大纲在界面里选中时再读取（`library_outline`，只供界面调用）。
 
