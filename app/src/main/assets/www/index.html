@@ -4650,6 +4650,32 @@
             to { transform: rotate(360deg); }
         }
 
+        /* 模型的思考过程（流式生成时显示，见 updateAIThinkingDetails） */
+        .ai-thinking {
+            margin: 0 0 10px;
+            font-size: 0.875em;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        .ai-thinking[hidden] { display: none; }
+        .ai-thinking > summary {
+            cursor: pointer;
+            color: var(--text-muted);
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .ai-thinking-text {
+            margin-top: 6px;
+            padding: 2px 0 2px 10px;
+            border-left: 2px solid var(--border-color);
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            max-height: 14em;
+            overflow-y: auto;
+        }
+        .lecture-content > .ai-thinking { margin: 0 0 16px; }
+        .lecture-content > .ai-thinking .ai-thinking-text { max-height: 50vh; }
+
         /* Toggle Switch */
         .toggle-switch {
             width: 44px;
@@ -7363,7 +7389,7 @@
             edit_message_prompt:'编辑消息：', reader_chat_greeting:'正在阅读《{0}》。{1}', reader_chat_notes:'\n当前页笔记：{0}', reader_fallback_review:'请帮我复习这一页的重点。', reader_fallback_example:'请给一个相关例题。', reader_fallback_notes:'请整理当前内容的学习笔记。', reader_fallback_proof:'请详细解释相关证明。', request_failed:'请求失败：', unknown_error:'未知错误',
             chat_history_filename:'聊天记录', select_books:'选择书籍', select_papers:'选择论文', progress_label:'进度 {0}%', book_file_missing:'书籍文件不存在', bookmark_page_suffix:'（第 {0} 页）', no_chapter_bookmarks:'暂无章节书签', chapter_bookmarks_hint:'长按书籍可生成讲义与章节书签', page_label:'第 {0} 页', lecture_progress_suffix:' · 讲义 {0}%',
             generating_lecture_content:'正在生成讲义内容…', first_generation_time:'首次生成可能需要几分钟',
-            lecture_stream_preparing:'正在准备这一节的 PDF…', lecture_stream_sent:'请求已发出，等待接口响应…', lecture_stream_connected:'已连接，等待模型开始输出…', lecture_stream_thinking:'模型正在思考，开始输出后逐段显示…', lecture_stream_fallback:'{0} 的流式请求失败，已改用普通请求，生成完成后一次显示：{1}',
+            lecture_stream_preparing:'正在准备这一节的 PDF…', lecture_stream_sent:'请求已发出，等待接口响应…', lecture_stream_connected:'已连接，等待模型开始输出…', lecture_stream_thinking:'模型正在思考，开始输出后逐段显示…', ai_thinking_live:'思考中…', ai_thinking_label:'思考过程', lecture_stream_fallback:'{0} 的流式请求失败，已改用普通请求，生成完成后一次显示：{1}',
             stream_notice_fallback:'{0} 的流式请求失败，这次改用了普通请求，所以没有边生成边显示：{1}', stream_notice_unstreamed:'{0} 没有流式返回（服务端忽略了流式参数），讲义只能在生成完成后一次显示', stream_notice_buffered:'{0} 的流式返回到最后才一次收到，中转服务或代理可能缓冲了返回，所以没有边生成边显示',
 generation_failed:'生成失败', network_api_retry:'请检查网络或 API 设置后重试', content_load_failed:'内容加载失败', lecture_content_not_found:'未找到讲义内容', lecture_not_generated:'讲义尚未生成', cannot_load_lecture:'无法加载讲义', download_lecture:'下载讲义',
             fetch_models_http_error:'拉取模型失败（HTTP {0}）：{1}', fetch_models_failed:'拉取模型失败', all_apis_failed:'所有 API 均调用失败', configure_api_first:'请先配置 API', api_error:'API 错误（HTTP {0}）：{1}', claude_api_error:'Claude API 错误（HTTP {0}）：{1}', api_url_empty:'API URL 不能为空', select_model_required:'请选择模型', large_recording_requires_gemini:'长录音需要使用 Gemini 模型',
@@ -7385,7 +7411,7 @@ generation_failed:'生成失败', network_api_retry:'请检查网络或 API 设�
             edit_message_prompt:'Edit message:', reader_chat_greeting:'You are reading “{0}.”{1}', reader_chat_notes:'\nNotes on this page: {0}', reader_fallback_review:'Help me review the key points on this page.', reader_fallback_example:'Give me a related example problem.', reader_fallback_notes:'Turn the current content into study notes.', reader_fallback_proof:'Explain the relevant proof in detail.', request_failed:'Request failed: ', unknown_error:'Unknown error',
             chat_history_filename:'chat-history', select_books:'Select books', select_papers:'Select papers', progress_label:'Progress {0}%', book_file_missing:'The book file is missing', bookmark_page_suffix:' (page {0})', no_chapter_bookmarks:'No chapter bookmarks', chapter_bookmarks_hint:'Long-press a book to generate lectures and chapter bookmarks', page_label:'Page {0}', lecture_progress_suffix:' · Lecture {0}%',
             generating_lecture_content:'Generating lecture content…', first_generation_time:'The first generation may take a few minutes',
-            lecture_stream_preparing:'Preparing this section’s PDF…', lecture_stream_sent:'Request sent; waiting for the API to respond…', lecture_stream_connected:'Connected; waiting for the model to start writing…', lecture_stream_thinking:'The model is thinking; the text will appear as it is written…', lecture_stream_fallback:'Streaming from {0} failed, so a normal request is used and the lecture appears when generation completes: {1}',
+            lecture_stream_preparing:'Preparing this section’s PDF…', lecture_stream_sent:'Request sent; waiting for the API to respond…', lecture_stream_connected:'Connected; waiting for the model to start writing…', lecture_stream_thinking:'The model is thinking; the text will appear as it is written…', ai_thinking_live:'Thinking…', ai_thinking_label:'Thought process', lecture_stream_fallback:'Streaming from {0} failed, so a normal request is used and the lecture appears when generation completes: {1}',
             stream_notice_fallback:'Streaming from {0} failed, so this lecture was fetched with a normal request and could not be shown as it was written: {1}', stream_notice_unstreamed:'{0} did not stream its response (the server ignored the streaming option), so the lecture can only appear when generation completes', stream_notice_buffered:'The streamed response from {0} arrived all at once at the end; a relay or proxy is probably buffering it, so the lecture could not be shown as it was written',
 generation_failed:'Generation failed', network_api_retry:'Check your network or API settings and try again', content_load_failed:'Failed to load content', lecture_content_not_found:'Lecture content was not found', lecture_not_generated:'This lecture has not been generated', cannot_load_lecture:'Unable to load the lecture', download_lecture:'Download lecture',
             fetch_models_http_error:'Failed to fetch models (HTTP {0}): {1}', fetch_models_failed:'Failed to fetch models', all_apis_failed:'All API attempts failed', configure_api_first:'Configure an API first', api_error:'API error (HTTP {0}): {1}', claude_api_error:'Claude API error (HTTP {0}): {1}', api_url_empty:'API URL cannot be empty', select_model_required:'Select a model', large_recording_requires_gemini:'Long recordings require a Gemini model',
@@ -7407,7 +7433,7 @@ generation_failed:'Generation failed', network_api_retry:'Check your network or 
             edit_message_prompt:'Modifier le message :', reader_chat_greeting:'Vous lisez « {0} ».{1}', reader_chat_notes:'\nNotes de cette page : {0}', reader_fallback_review:'Aide-moi à réviser les points clés de cette page.', reader_fallback_example:'Donne-moi un exercice similaire.', reader_fallback_notes:'Transforme le contenu actuel en notes de révision.', reader_fallback_proof:'Explique en détail la démonstration correspondante.', request_failed:'Échec de la requête : ', unknown_error:'Erreur inconnue',
             chat_history_filename:'historique-discussion', select_books:'Sélectionner des livres', select_papers:'Sélectionner des articles', progress_label:'Progression {0} %', book_file_missing:'Le fichier du livre est introuvable', bookmark_page_suffix:' (page {0})', no_chapter_bookmarks:'Aucun signet de chapitre', chapter_bookmarks_hint:'Appuyez longuement sur un livre pour générer les cours et les signets', page_label:'Page {0}', lecture_progress_suffix:' · Cours {0} %',
             generating_lecture_content:'Génération du cours…', first_generation_time:'La première génération peut prendre quelques minutes',
-            lecture_stream_preparing:'Préparation du PDF de cette section…', lecture_stream_sent:'Requête envoyée ; en attente de la réponse de l’API…', lecture_stream_connected:'Connecté ; en attente du début de la rédaction…', lecture_stream_thinking:'Le modèle réfléchit ; le texte s’affichera au fil de la rédaction…', lecture_stream_fallback:'Le streaming depuis {0} a échoué ; une requête normale est utilisée et le cours s’affichera à la fin : {1}',
+            lecture_stream_preparing:'Préparation du PDF de cette section…', lecture_stream_sent:'Requête envoyée ; en attente de la réponse de l’API…', lecture_stream_connected:'Connecté ; en attente du début de la rédaction…', lecture_stream_thinking:'Le modèle réfléchit ; le texte s’affichera au fil de la rédaction…', ai_thinking_live:'Réflexion…', ai_thinking_label:'Réflexion du modèle', lecture_stream_fallback:'Le streaming depuis {0} a échoué ; une requête normale est utilisée et le cours s’affichera à la fin : {1}',
             stream_notice_fallback:'Le streaming depuis {0} a échoué ; ce cours a été obtenu par une requête normale et n’a pas pu s’afficher au fil de la rédaction : {1}', stream_notice_unstreamed:'{0} n’a pas renvoyé de flux (le serveur a ignoré l’option de streaming) ; le cours ne peut s’afficher qu’à la fin', stream_notice_buffered:'La réponse de {0} est arrivée d’un coup à la fin ; un relais ou un proxy la met probablement en mémoire tampon, le cours n’a donc pas pu s’afficher au fil de la rédaction',
 generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le réseau ou les réglages API, puis réessayez', content_load_failed:'Échec du chargement du contenu', lecture_content_not_found:'Contenu du cours introuvable', lecture_not_generated:'Ce cours n’a pas encore été généré', cannot_load_lecture:'Impossible de charger le cours', download_lecture:'Télécharger le cours',
             fetch_models_http_error:'Échec de récupération des modèles (HTTP {0}) : {1}', fetch_models_failed:'Échec de récupération des modèles', all_apis_failed:'Toutes les tentatives API ont échoué', configure_api_first:'Configurez d’abord une API', api_error:'Erreur API (HTTP {0}) : {1}', claude_api_error:'Erreur de l’API Claude (HTTP {0}) : {1}', api_url_empty:"L’URL de l’API ne peut pas être vide", select_model_required:'Sélectionnez un modèle', large_recording_requires_gemini:'Les enregistrements longs nécessitent un modèle Gemini',
@@ -12628,15 +12654,24 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             return html + `</div>`;
         }
 
-        // 摘要还在生成：按已收到的正文整篇重画（摘要篇幅短），末尾显示生成中提示，保持滚动位置
-        function renderAbstractStream(container, text) {
+        // 摘要还在生成：按已收到的正文整篇重画（摘要篇幅短），末尾显示生成中提示，保持滚动位置。
+        // 模型返回了思考内容时最上面显示思考过程，单独更新，折叠状态不随正文重画
+        function renderAbstractStream(container, text, thinking = '') {
             const scrollTop = container.scrollTop;
-            container.innerHTML = (text ? abstractBodyHtml(text) : '') + `
-                <div class="generating-indicator">
-                    <div class="generating-spinner"></div>
-                    <span>${i18n('toast_generating_abstract')}</span>
-                </div>`;
-            renderLectureMath(container);
+            let details = container.querySelector(':scope > .ai-thinking');
+            let body = container.querySelector(':scope > .abstract-stream-body');
+            if (!details || !body) {
+                container.innerHTML = `${AI_THINKING_DETAILS_HTML}<div class="abstract-stream-body"></div>
+                    <div class="generating-indicator">
+                        <div class="generating-spinner"></div>
+                        <span>${i18n('toast_generating_abstract')}</span>
+                    </div>`;
+                details = container.firstElementChild;
+                body = details.nextElementSibling;
+            }
+            updateAIThinkingDetails(details, thinking, !!text);
+            body.innerHTML = text ? abstractBodyHtml(text) : '';
+            renderLectureMath(body);
             container.scrollTop = scrollTop;
             if (einkMode) einkUpdateLecturePages();
         }
@@ -19780,14 +19815,70 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             return '<p>' + html + '</p>';
         }
 
+        // 模型的思考过程显示成可折叠的一块：思考内容按纯文本显示，不渲染公式（半截公式会报错，长思考重排公式也慢）
+        const AI_THINKING_DETAILS_HTML = '<details class="ai-thinking" open><summary></summary><div class="ai-thinking-text"></div></details>';
+
+        // 更新思考过程折叠块。没有思考内容时隐藏；还没有正文时展开、标题为“思考中…”；
+        // 正文开始后自动收起一次、标题改为“思考过程”，之后用户点开或收起都不再改动
+        function updateAIThinkingDetails(details, thinking, hasText) {
+            details.hidden = !thinking;
+            if (!thinking) return;
+            if (hasText && !details._autoCollapsed) {
+                details._autoCollapsed = true;
+                details.open = false;
+            }
+            const summary = details.firstElementChild;
+            const label = i18n(hasText ? 'ai_thinking_label' : 'ai_thinking_live');
+            if (summary.textContent !== label) summary.textContent = label;
+            const textEl = details.lastElementChild;
+            if (textEl.textContent === thinking) return;
+            // 原本停在底部（或还没出现滚动条）时跟着滚到底，读者往上翻看时不打断
+            const atBottom = textEl.scrollHeight - textEl.scrollTop - textEl.clientHeight < 40;
+            textEl.textContent = thinking;
+            if (atBottom) textEl.scrollTop = textEl.scrollHeight;
+        }
+
+        // 讲义、摘要、课堂笔记生成中、还没有正文时，在生成中提示下面展开显示思考过程
+        function renderAIThinkingWaiting(container, thinking) {
+            let details = container.querySelector(':scope > .ai-thinking');
+            if (!details) {
+                if (!thinking) return;
+                container.insertAdjacentHTML('beforeend', AI_THINKING_DETAILS_HTML);
+                details = container.lastElementChild;
+            }
+            updateAIThinkingDetails(details, thinking, false);
+        }
+
         // 流式回答：返回作为 callAI 的 onDelta，把已收到的全文画进“正在回答”的元素。
         // 合并更新，普通屏最多每 0.3 秒、墨水屏每 1 秒重画一次；所在聊天列表原本停在底部时跟着滚到底。
         // getTarget 每次重新查找元素，元素已移除时不再重画；回答结束后调用 stop() 取消尚未执行的重画。
+        // 模型返回思考内容时，回答上方加一块思考过程（见 updateAIThinkingDetails），与回答分开更新，折叠状态不被重画打断
         function chatStreamUpdater(getTarget, toHtml = renderChatMarkdownLatex, renderMath = true) {
             let latest = '';
+            let latestThinking = '';
             let timer = null;
-            const update = text => {
+            let parts = null; // 带思考过程时气泡里的 { target, details, answer, answerText }
+            const render = target => {
+                if (!latestThinking) {
+                    parts = null;
+                    target.innerHTML = toHtml(latest);
+                    if (renderMath) renderLectureMath(target);
+                    return;
+                }
+                if (!parts || parts.target !== target || !target.contains(parts.details)) {
+                    target.innerHTML = AI_THINKING_DETAILS_HTML + '<div class="ai-answer"></div>';
+                    parts = { target, details: target.firstElementChild, answer: target.lastElementChild, answerText: null };
+                }
+                updateAIThinkingDetails(parts.details, latestThinking, !!latest);
+                if (parts.answerText !== latest) {
+                    parts.answerText = latest;
+                    parts.answer.innerHTML = toHtml(latest);
+                    if (renderMath) renderLectureMath(parts.answer);
+                }
+            };
+            const update = (text, thinking = '') => {
                 latest = text;
+                latestThinking = thinking;
                 if (timer) return;
                 timer = setTimeout(() => {
                     timer = null;
@@ -19795,8 +19886,7 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     if (!target) return;
                     const scroller = target.closest('.chat-container');
                     const atBottom = scroller && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40;
-                    target.innerHTML = toHtml(latest);
-                    if (renderMath) renderLectureMath(target);
+                    render(target);
                     if (atBottom) scroller.scrollTop = scroller.scrollHeight;
                 }, einkMode ? 1000 : 300);
             };
@@ -20324,7 +20414,8 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
 
         // ==================== 通用AI调用 ====================
         // options.feature 为 AI 功能分配中的功能 id，决定使用主要 / 次要 / 备用哪一套 API
-        // options.onDelta 存在时走流式请求，每收到一段正文就以本次请求已收到的全文回调；返回值仍是全文
+        // options.onDelta 存在时走流式请求，每收到一段正文或思考内容就回调 onDelta(text, thinking)：
+        // text 为本次请求已收到的正文全文，thinking 为模型返回的思考内容全文（没有时为空串）；返回值仍是正文全文
         async function callAI(systemPrompt, messages, options = {}) {
             const [config, fallbackConfig] = resolveAIRoute(options.feature);
             if (!config) throw new Error(i18n('configure_api_first'));
@@ -20351,12 +20442,16 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             if (!options.onDelta) return await doAIRequest(config, systemPrompt, messages, options);
             const onStreamState = options.onStreamState
                 ? (state, detail) => options.onStreamState(state, detail, config) : null;
+            // 只收到思考内容、还没有正文就失败时，同样改用普通请求再试
             let received = false;
             try {
                 return await doAIRequest(config, systemPrompt, messages, {
                     ...options,
                     onStreamState,
-                    onDelta: text => { received = true; options.onDelta(text); }
+                    onDelta: (text, thinking) => {
+                        if (text) received = true;
+                        options.onDelta(text, thinking);
+                    }
                 });
             } catch (e) {
                 if (received) throw e;
@@ -20398,30 +20493,110 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             return !!event.candidates?.[0]?.content?.parts?.some(p => p?.thought);
         }
 
+        // 流式事件里新增的一段思考内容：OpenAI 兼容接口的 reasoning_content（DeepSeek 等）或 reasoning（OpenRouter 等）、
+        // Claude 的 thinking_delta、Gemini 标着 thought 的片段
+        function aiStreamDeltaThinking(event) {
+            const choice = event.choices?.[0];
+            if (choice) {
+                const delta = choice.delta || {};
+                // 有的中转服务两个字段发同一段内容，只取一个
+                if (typeof delta.reasoning_content === 'string' && delta.reasoning_content) return delta.reasoning_content;
+                return typeof delta.reasoning === 'string' ? delta.reasoning : '';
+            }
+            if (event.type === 'content_block_delta') {
+                return event.delta?.type === 'thinking_delta' ? event.delta.thinking || '' : '';
+            }
+            const parts = event.candidates?.[0]?.content?.parts;
+            return Array.isArray(parts) ? parts.filter(p => p?.thought).map(p => p.text || '').join('') : '';
+        }
+
+        // 有的中转服务和本地部署把思考过程放在正文开头的 <think>…</think> 里。返回 split(raw) → { text, thinking }，
+        // 把收到的正文全文拆成正文和思考内容；开头的标签还没收全（如只收到 "<thi"）时先都不显示
+        function createThinkTagSplitter() {
+            let mode = 'unknown'; // unknown 还不确定；none 正文不以 <think> 开头；open 在标签里；closed 标签已结束
+            let lead = 0;         // <think> 前的空白长度
+            let scanFrom = 7;     // 下次从这里找 </think>，避免每段都从头扫描
+            let bodyStart = 0;
+            let thinking = '';
+            return raw => {
+                if (mode === 'none') return { text: raw, thinking: '' };
+                if (mode === 'closed') return { text: raw.slice(bodyStart).replace(/^\s+/, ''), thinking };
+                if (mode === 'unknown') {
+                    lead = raw.length - raw.replace(/^\s+/, '').length;
+                    const start = raw.slice(lead, lead + 7);
+                    if (!start || (start.length < 7 && '<think>'.startsWith(start))) return { text: '', thinking: '' };
+                    if (start !== '<think>') {
+                        mode = 'none';
+                        return { text: raw, thinking: '' };
+                    }
+                    mode = 'open';
+                }
+                const end = raw.indexOf('</think>', lead + scanFrom);
+                if (end < 0) {
+                    scanFrom = Math.max(7, raw.length - lead - 7);
+                    // 末尾可能是收了一半的 </think>，先不显示
+                    let open = raw.slice(lead + 7);
+                    const lt = open.lastIndexOf('<');
+                    if (lt >= 0 && '</think>'.startsWith(open.slice(lt))) open = open.slice(0, lt);
+                    return { text: '', thinking: open.trim() };
+                }
+                mode = 'closed';
+                thinking = raw.slice(lead + 7, end).trim();
+                bodyStart = end + 8;
+                return { text: raw.slice(bodyStart).replace(/^\s+/, ''), thinking };
+            };
+        }
+
         // 读取流式响应。按正文开头判断格式，不只看 content-type（有的中转服务把 SSE 标成 application/json）：
         // SSE（OpenAI 兼容接口、Claude、Gemini 的 alt=sse）；JSON 数组（Gemini 不带 alt=sse 时逐个元素返回）；
         // 逐个返回的 JSON 对象（每行一个）；单个 JSON（服务端忽略了流式参数，用 textOf(data) 取全文）。
-        // deltaOf(event) 取出这一段新增的正文，每收到新正文就以已收到的全文调用 onDelta；onState 见 doAIRequestPreferStream。
+        // deltaOf(event) 取出这一段新增的正文。每收到新的正文或思考内容就调用 onDelta(正文全文, 思考内容全文)；
+        // 正文开头 <think>…</think> 里的内容算作思考内容。onState 见 doAIRequestPreferStream。
         async function readAIStream(response, onDelta, deltaOf, textOf, onState) {
             onState?.('connected');
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let text = '';
-            let thinking = false;
-            let firstTextAt = 0;
+            let text = '';           // 收到的正文（可能以 <think> 开头）
+            let thinking = '';       // 接口单独返回的思考内容
+            let shownText = '';      // 交给 onDelta 的正文和思考内容
+            let shownThinking = '';
+            let tagThinking = '';    // 正文开头 <think> 标签里的思考内容
+            let thinkingReported = false;
+            const splitThinkTag = createThinkTagSplitter();
+            let firstAt = 0;         // 第一次收到正文或思考内容的时间
             let lastTextAt = 0;
             const handleEvent = event => {
                 if (!event || typeof event !== 'object') return;
                 // 生成中途出错时服务端在流里发 error 事件（例如 Claude 的 overloaded_error）
                 if (event.error) throw new Error(event.error.message || JSON.stringify(event.error));
+                // Claude 的多个思考块之间空一行
+                if (event.type === 'content_block_start' && event.content_block?.type === 'thinking' && thinking) {
+                    thinking += '\n\n';
+                }
                 const delta = deltaOf(event) || aiStreamDeltaText(event);
-                if (delta) {
-                    text += delta;
-                    lastTextAt = Date.now();
-                    if (!firstTextAt) firstTextAt = lastTextAt;
-                    onDelta(text);
-                } else if (!text && !thinking && aiStreamEventIsThinking(event)) {
-                    thinking = true;
+                const thinkingDelta = aiStreamDeltaThinking(event);
+                if (delta || thinkingDelta) {
+                    const now = Date.now();
+                    if (!firstAt) firstAt = now;
+                    if (delta) {
+                        text += delta;
+                        lastTextAt = now;
+                    }
+                    thinking += thinkingDelta;
+                    const split = splitThinkTag(text);
+                    let changed = split.text !== shownText;
+                    if (thinkingDelta || split.thinking !== tagThinking) {
+                        tagThinking = split.thinking;
+                        shownThinking = [thinking.trim(), tagThinking].filter(Boolean).join('\n\n');
+                        changed = true;
+                    }
+                    if (changed) {
+                        shownText = split.text;
+                        onDelta(shownText, shownThinking);
+                    }
+                }
+                if (!shownText && !thinkingReported && (shownThinking || aiStreamEventIsThinking(event))) {
+                    thinkingReported = true;
                     onState?.('thinking');
                 }
             };
@@ -20518,11 +20693,11 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             if (format === 'json' && values <= 1) {
                 // 整个响应只有一个 JSON：服务端忽略了流式参数，按普通响应取全文
                 onState?.('unstreamed');
-                return text || (lastValue && (textOf(lastValue) || aiResponseText(lastValue))) || null;
+                return shownText || (lastValue && (textOf(lastValue) || aiResponseText(lastValue))) || null;
             }
-            // 长正文在一秒内全部到达：中转服务或代理把流式返回攒到最后才发
-            if (text.length > 3000 && lastTextAt - firstTextAt < 1000) onState?.('buffered');
-            return text || null;
+            // 思考内容和长正文在一秒内全部到达：中转服务或代理把流式返回攒到最后才发
+            if (text.length > 3000 && lastTextAt - firstAt < 1000) onState?.('buffered');
+            return shownText || null;
         }
 
         // 每次 AI 请求允许返回的最大 token 数
@@ -20577,6 +20752,39 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             if (response.ok) return { response };
             errText = await response.text().catch(() => '');
             return { response, errText };
+        }
+
+        // 同 sendAIRequestWithTokenRetry；服务端因为某个可选参数拒绝请求（400 / 422 且错误信息提到它）时，
+        // 去掉这个参数再请求。optional 为 [对象, 字段名, 错误信息的正则]，例如中转服务或较早的模型不认识思考参数
+        async function sendAIRequestDroppingRejected(config, options, send, optional) {
+            let result = await sendAIRequestWithTokenRetry(config, options, send);
+            while (!result.response.ok && (result.response.status === 400 || result.response.status === 422)) {
+                const rejected = optional.find(([obj, field, pattern]) =>
+                    obj[field] !== undefined && pattern.test(result.errText || ''));
+                if (!rejected) break;
+                console.warn(`${config.model} 不接受 ${rejected[1]}，去掉后重试`);
+                delete rejected[0][rejected[1]];
+                result = await sendAIRequestWithTokenRetry(config, options, send);
+            }
+            return result;
+        }
+
+        // 从 Claude 模型名认出系列和版本（claude-opus-4-7、claude-sonnet-5-5、anthropic/claude-opus-4.6 等）。
+        // noSampling：不接受 temperature（Opus 4.7 及以后、Sonnet / Haiku 5 及以后、Fable / Mythos）；
+        // thinksByDefault：不带 thinking 参数也会思考（Opus / Sonnet / Haiku 5 及以后、Fable / Mythos），只是默认不返回思考内容。
+        // 认不出（如 claude-3-7-sonnet）时返回 null
+        function claudeModelInfo(model) {
+            const m = String(model || '').toLowerCase()
+                .match(/(opus|sonnet|haiku|fable|mythos)[-_.]?(\d+)(?:[-_.](\d{1,2})(?!\d))?/);
+            if (!m) return null;
+            const family = m[1];
+            const major = Number(m[2]);
+            const minor = Number(m[3] || 0);
+            const latest = family === 'fable' || family === 'mythos' || major >= 5;
+            return {
+                noSampling: latest || (family === 'opus' && major === 4 && minor >= 7),
+                thinksByDefault: latest
+            };
         }
 
         async function doAIRequest(config, systemPrompt, messages, options = {}) {
@@ -20701,14 +20909,18 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
 
         // Claude Messages API 封装（仅用于带 PDF 附件的情形）
         async function doClaudeRequest(config, systemPrompt, messages, options = {}) {
-            const body = {
-                model: config.model,
-                temperature: options.temperature != null ? options.temperature : 0.7,
-                messages,
-            };
+            const model = claudeModelInfo(config.model);
+            const body = { model: config.model, messages };
+            // 较新的模型带 temperature 会被拒绝（400）
+            if (!model?.noSampling) body.temperature = options.temperature != null ? options.temperature : 0.7;
             if (systemPrompt) body.system = systemPrompt;
-            if (options.onDelta) body.stream = true;
-            const { response, errText } = await sendAIRequestWithTokenRetry(config, options, maxTokens => {
+            if (options.onDelta) {
+                body.stream = true;
+                // 默认就会思考的模型流式时要回思考摘要（display 默认是 omitted，思考内容为空）。
+                // 只决定是否返回思考内容，思考多少、计费都不变
+                if (model?.thinksByDefault) body.thinking = { type: 'adaptive', display: 'summarized' };
+            }
+            const { response, errText } = await sendAIRequestDroppingRejected(config, options, maxTokens => {
                 body.max_tokens = maxTokens;
                 return fetch(config.url, {
                     method: 'POST',
@@ -20720,7 +20932,7 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     },
                     body: JSON.stringify(body)
                 });
-            });
+            }, [[body, 'thinking', /thinking/i], [body, 'temperature', /temperature/i]]);
             if (!response.ok) {
                 throw new Error(i18n('claude_api_error', response.status, errText));
             }
@@ -20847,21 +21059,26 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             if (systemPrompt) {
                 body.systemInstruction = { parts: [{ text: String(systemPrompt) }] };
             }
+            // 会思考的 Gemini 模型（2.5 及以后）流式时要回思考摘要，只决定是否返回思考内容，思考多少不变
+            if (options.onDelta && /gemini-(?:2\.5|[3-9])|gemini-(?:pro|flash)(?:-lite)?-latest|thinking/i.test(modelName)) {
+                body.generationConfig.thinkingConfig = { includeThoughts: true };
+            }
 
             const method = options.onDelta ? ':streamGenerateContent?alt=sse&key=' : ':generateContent?key=';
             const url = base + '/models/' + encodeURIComponent(modelName) + method + encodeURIComponent(config.key);
-            const { response, errText } = await sendAIRequestWithTokenRetry(config, options, maxTokens => {
+            const { response, errText } = await sendAIRequestDroppingRejected(config, options, maxTokens => {
                 body.generationConfig.maxOutputTokens = maxTokens;
                 return fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-            });
+            }, [[body.generationConfig, 'thinkingConfig', /think|thought/i]]);
             if (!response.ok) {
                 throw new Error(i18n('api_error', response.status, errText));
             }
-            // 流式时每个事件也是这种结构，只含新增的一段正文，最后一段带 finishReason
+            // 流式时每个事件也是这种结构，只含新增的一段正文，最后一段带 finishReason。
+            // 标着 thought 的片段是思考内容，不算正文
             const textOf = data => {
                 const candidate = data.candidates?.[0];
                 const finishReason = candidate?.finishReason;
@@ -20870,7 +21087,7 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                 }
                 const parts = candidate?.content?.parts;
                 if (Array.isArray(parts) && parts.length > 0) {
-                    return parts.map(p => p.text || '').join('');
+                    return parts.filter(p => !p?.thought).map(p => p.text || '').join('');
                 }
                 return null;
             };
@@ -21513,9 +21730,9 @@ ${i18n('prompt_outline_gen')}`;
             if (lectureStreams.has(streamKey)) return;
 
             chapter.status = 'generating';
-            // 本次生成已收到的正文只放内存，讲义阅读器据此边生成边显示。还没有正文时，
+            // 本次生成已收到的正文和模型的思考内容只放内存，讲义阅读器据此边生成边显示。还没有正文时，
             // phase / fallback 说明在等什么；notice 记下没能流式显示的原因，生成完成后提示
-            const stream = { text: '', phase: 'preparing', fallback: null, notice: null };
+            const stream = { text: '', thinking: '', phase: 'preparing', fallback: null, notice: null };
             lectureStreams.set(streamKey, stream);
             saveData();
 
@@ -21555,8 +21772,9 @@ ${i18n('prompt_lecture_gen')}`;
                 const result = await callAI(systemPrompt, [{ role: 'user', content: userMessage }], {
                     feature,
                     pdfAttachment,
-                    onDelta: text => {
+                    onDelta: (text, thinking) => {
                         stream.text = text;
+                        stream.thinking = thinking;
                         if (isViewing()) scheduleLectureStreamRender();
                     },
                     onStreamState: (state, detail, config) => {
@@ -21632,7 +21850,7 @@ ${i18n('prompt_lecture_gen')}`;
 
         // 讲义阅读器状态
         let currentLecture = null;
-        // 正在生成的讲义章节已收到的正文（只在内存中，不写入 appData）：lecContentKey → { text }。
+        // 正在生成的讲义章节已收到的正文和思考内容（只在内存中，不写入 appData）：lecContentKey → { text, thinking, … }。
         // 本次运行中正在生成哪些章节以这里为准
         const lectureStreams = new Map();
         let _lectureStreamRenderTimer = null;
@@ -21661,6 +21879,20 @@ ${i18n('prompt_lecture_gen')}`;
         function updateLectureStreamStatus(stream) {
             const el = document.getElementById('lectureStreamStatus');
             if (el) el.textContent = lectureStreamStatusText(stream);
+        }
+
+        // 生成中的章节还没有正文时的界面：生成中提示、在等什么，以及模型返回的思考过程
+        function renderLectureStreamWaiting(container, stream) {
+            // 之前显示过正文（主要 API 中途失败、备用 API 从头重新生成）或还不是等待界面时整块重建
+            if (!container.querySelector(':scope > #lectureStreamStatus')) {
+                container.innerHTML = `
+                    <div class="generating-indicator">
+                        <div class="generating-spinner"></div>
+                        <span>${i18n('generating_lecture_content')}</span>
+                    </div>
+                    <p id="lectureStreamStatus" style="color:var(--text-muted);text-align:center;line-height:1.6;">${escapeHtml(lectureStreamStatusText(stream))}</p>`;
+            }
+            renderAIThinkingWaiting(container, stream.thinking);
         }
 
         // 讲义没能边生成边显示时说明原因：流式请求失败、接口没有流式返回，或返回被缓冲到最后。
@@ -21750,15 +21982,11 @@ ${i18n('prompt_lecture_gen')}`;
                 const streamKey = lecContentKey(currentLecture.bookId, chapter.id);
                 const stream = lectureStreams.get(streamKey);
                 if (stream.text) {
-                    renderLectureStream(container, streamKey, stream.text);
+                    renderLectureStream(container, streamKey, stream.text, stream.thinking);
                     return;
                 }
-                container.innerHTML = `
-                    <div class="generating-indicator">
-                        <div class="generating-spinner"></div>
-                        <span>${i18n('generating_lecture_content')}</span>
-                    </div>
-                    <p id="lectureStreamStatus" style="color:var(--text-muted);text-align:center;line-height:1.6;">${escapeHtml(lectureStreamStatusText(stream))}</p>`;
+                container.innerHTML = '';
+                renderLectureStreamWaiting(container, stream);
                 return;
             }
 
@@ -21903,11 +22131,12 @@ ${i18n('prompt_lecture_gen')}`;
 
         // 生成中的讲义边收边显示：完整的段落渲染一次后保留，之后只追加新完成的段落、重画末尾未完成的一段，
         // 长讲义不必每次整篇重排和重新渲染公式，已显示部分的滚动位置和选区也不受影响。
-        function renderLectureStream(container, key, text) {
+        // 模型返回了思考内容时，正文上方显示收起的思考过程，可点开查看
+        function renderLectureStream(container, key, text, thinking = '') {
             let body = container.querySelector('.lecture-body');
             // 换了章节，或主要 API 中途失败、备用 API 从头重新生成时整段重建
             if (!body || body._streamKey !== key || !text.startsWith(body._streamDoneText)) {
-                container.innerHTML = `
+                container.innerHTML = `${AI_THINKING_DETAILS_HTML}
                     <div class="lecture-body"><div class="lecture-stream-tail"></div></div>
                     <div class="generating-indicator">
                         <div class="generating-spinner"></div>
@@ -21916,7 +22145,9 @@ ${i18n('prompt_lecture_gen')}`;
                 body = container.querySelector('.lecture-body');
                 body._streamKey = key;
                 body._streamDoneText = '';
+                body._thinkingDetails = container.querySelector(':scope > .ai-thinking');
             }
+            updateAIThinkingDetails(body._thinkingDetails, thinking, true);
             const tail = body.querySelector('.lecture-stream-tail');
             const doneLength = lectureStreamStableLength(text);
             if (doneLength > body._streamDoneText.length) {
@@ -21948,21 +22179,30 @@ ${i18n('prompt_lecture_gen')}`;
             const container = document.getElementById('lectureViewerContent');
             if (currentLecture?.isPaperAbstract) {
                 const stream = abstractStreams.get(currentLecture.paperId);
-                if (stream) renderAbstractStream(container, stream.text);
+                if (stream) renderAbstractStream(container, stream.text, stream.thinking);
                 return;
             }
             if (currentLecture?.streamMaterialId) {
+                const stream = classroomNoteStreams.get(currentLecture.streamMaterialId);
+                if (!stream) return;
                 // 与课堂笔记正式显示时一样去掉来源标记 {ref:…}
-                const text = classroomNoteStreams.get(currentLecture.streamMaterialId)?.text.replace(/\{ref:[^}]+\}/g, '');
-                if (text) renderLectureStream(container, 'classroom_' + currentLecture.streamMaterialId, text);
+                const text = stream.text.replace(/\{ref:[^}]+\}/g, '');
+                if (text) {
+                    renderLectureStream(container, 'classroom_' + currentLecture.streamMaterialId, text, stream.thinking);
+                } else if (stream.thinking) {
+                    // 还没有正文（或从头重新生成）：换回生成中提示，下面显示思考过程
+                    if (container.querySelector('.lecture-body')) container.innerHTML = classroomNoteStreamWaitingHtml();
+                    renderAIThinkingWaiting(container, stream.thinking);
+                }
                 return;
             }
             const chapter = currentLecture?.bookId
                 ? appData.lectures?.[currentLecture.bookId]?.chapters[currentLecture.chapterIndex] : null;
             if (!lectureChapterInFlight(currentLecture?.bookId, chapter)) return;
             const key = lecContentKey(currentLecture.bookId, chapter.id);
-            const text = lectureStreams.get(key)?.text;
-            if (text) renderLectureStream(container, key, text);
+            const stream = lectureStreams.get(key);
+            if (stream?.text) renderLectureStream(container, key, stream.text, stream.thinking);
+            else if (stream?.thinking) renderLectureStreamWaiting(container, stream);
         }
 
         function renderLectureMath(element) {
@@ -23839,7 +24079,7 @@ ${i18n('prompt_lecture_gen')}`;
             }
         }
 
-        // 正在生成的论文摘要已收到的正文（只在内存中）：paperId → { text }
+        // 正在生成的论文摘要已收到的正文和思考内容（只在内存中）：paperId → { text, thinking }
         const abstractStreams = new Map();
 
         async function generateAbstract(paperId) {
@@ -23848,7 +24088,7 @@ ${i18n('prompt_lecture_gen')}`;
 
             showToast(i18n('toast_generating_abstract'));
             // 生成期间摘要卡片显示“生成中”，在讲义阅读器里打开可边生成边看
-            const stream = { text: '' };
+            const stream = { text: '', thinking: '' };
             abstractStreams.set(paperId, stream);
             renderNotesPage();
             if (currentLecture?.isPaperAbstract && currentLecture.paperId === paperId) renderCurrentLectureStream();
@@ -23862,8 +24102,9 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
 
                 const result = await callAI(systemPrompt, [{ role: 'user', content: userMessage }], {
                     feature: 'library_abstract',
-                    onDelta: text => {
+                    onDelta: (text, thinking) => {
                         stream.text = text;
+                        stream.thinking = thinking;
                         if (currentLecture?.isPaperAbstract && currentLecture.paperId === paperId) scheduleLectureStreamRender();
                     }
                 });
@@ -26563,7 +26804,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
         }
 
         function startClassroomNoteStream(materialId) {
-            const stream = { text: '' };
+            const stream = { text: '', thinking: '' };
             classroomNoteStreams.set(materialId, stream);
             // 讲义阅读器正在显示这份素材的笔记（重新生成）时，改为显示流式正文
             if (currentLecture?.isClassroomNote && !currentLecture.streamMaterialId) {
@@ -26575,9 +26816,18 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             return stream;
         }
 
-        function updateClassroomNoteStream(materialId, stream, text) {
+        function updateClassroomNoteStream(materialId, stream, text, thinking = '') {
             stream.text = text;
+            stream.thinking = thinking;
             if (currentLecture?.streamMaterialId === materialId) scheduleLectureStreamRender();
+        }
+
+        function classroomNoteStreamWaitingHtml() {
+            return `
+                <div class="generating-indicator">
+                    <div class="generating-spinner"></div>
+                    <span>${i18n('generating')}</span>
+                </div>`;
         }
 
         // noteId 为生成成功的新笔记；失败时为空
@@ -26615,11 +26865,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             };
             document.getElementById('lectureViewerTitle').textContent = classroomStreamTitle(found.material);
             document.getElementById('lectureProgressBadge').textContent = '0%';
-            document.getElementById('lectureViewerContent').innerHTML = `
-                <div class="generating-indicator">
-                    <div class="generating-spinner"></div>
-                    <span>${i18n('generating')}</span>
-                </div>`;
+            document.getElementById('lectureViewerContent').innerHTML = classroomNoteStreamWaitingHtml();
             renderCurrentLectureStream();
             document.getElementById('lectureViewer').classList.add('show');
             document.body.classList.add('lecture-active');
@@ -26652,7 +26898,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
             // 流式预览按最终正文的拼法显示：多段时逐段加标题（与 recording-ai.js 的 mergeRecordingParts 相同），
             // 多段或长录音文件时开头加录音标题
             const segmentTexts = [];
-            const showSegmentText = (context, text) => {
+            const showSegmentText = (context, text, thinking) => {
                 segmentTexts[context.index] = text;
                 let preview = context.total > 1
                     ? segmentTexts.slice(0, context.index + 1).map((part, i) =>
@@ -26661,7 +26907,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 if (context.total > 1 || prepared?.mode === 'gemini-file') {
                     preview = '# ' + material.ref + ' ' + i18n('rec_note_badge') + '\n\n' + preview;
                 }
-                updateClassroomNoteStream(materialId, stream, preview);
+                updateClassroomNoteStream(materialId, stream, preview, thinking);
             };
             let note = null;
             try {
@@ -26692,7 +26938,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                                     } },
                                     { type: 'text', text: userMsg }
                                 ]
-                            }], { temperature: 0.3, onDelta: text => showSegmentText(context, text) });
+                            }], { temperature: 0.3, onDelta: (text, thinking) => showSegmentText(context, text, thinking) });
                         }
                         let partBlob = null;
                         try {
@@ -26716,7 +26962,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                                     } },
                                     { type: 'text', text: partUser }
                                 ]
-                            }], { feature, onDelta: text => showSegmentText(context, text) });
+                            }], { feature, onDelta: (text, thinking) => showSegmentText(context, text, thinking) });
                         } finally {
                             partBlob = null;
                         }
@@ -26913,7 +27159,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                 let msgContent = [{ role: 'user', content: userMsg }];
                 const aiOptions = {
                     feature: options.feature || 'classroom_upload_note',
-                    onDelta: text => updateClassroomNoteStream(materialId, stream, text)
+                    onDelta: (text, thinking) => updateClassroomNoteStream(materialId, stream, text, thinking)
                 };
 
                 // For images, include the image

@@ -52,6 +52,14 @@ This repository ships the current Math Reader web app as an Android APK. BOOX/E 
 
 各处 AI 对话、问 AI 的回答，以及书籍讲义、论文摘要、课堂 AI 笔记都边生成边显示（流式返回）。所用接口不支持流式返回时，同一 API 自动改用普通请求，结果在生成完成后一次显示。中转服务把流式结果标成 JSON、按行返回 JSON，或者返回别家接口的格式时，同样按流式读取。
 
+模型返回思考内容时，流式显示一并显示思考过程：正文出来之前展开显示“思考中…”，正文开始后收成正文上方的“思考过程”一行，点开可以接着看；生成完成后只保存正文，思考过程不保存。支持的返回方式：
+
+- OpenAI 兼容接口的 `reasoning_content`（DeepSeek 的 `deepseek-reasoner` 等）或 `reasoning` 字段（OpenRouter 等）；正文开头的 `<think>…</think>` 也按思考内容显示，不计入正文。
+- Gemini 2.5 及以后的模型：流式请求时要回思考摘要（`includeThoughts`）。
+- Claude 默认开启思考的模型（Opus / Sonnet / Haiku 5 及以后、Fable）：流式请求时要回思考摘要（`display: summarized`）。Claude 只在带 PDF 的请求（讲义生成、PDF 阅读页对话）走原生接口。
+
+要回思考摘要只决定返回与否，模型思考多少、计费都不变；不思考的模型（如 `deepseek-chat`）照常只显示正文。中转服务或较早的模型不接受思考参数时，应用去掉该参数自动重试。OpenAI 官方 Chat Completions 接口不返回推理内容，因此不显示思考过程。
+
 模型能力建议：
 
 - 普通问答、讲义和摘要需要可靠的长文本与 LaTeX 输出能力。
@@ -113,7 +121,7 @@ iPhone/iPad PWA 中超过 5 分钟或 10 MB 的 AAC/M4A 长录音需要配置 Ge
 
 1. 在 **书架 → AI → 生成大纲** 选择 PDF 书籍。
 2. 大纲完成后选择 **生成讲义**。系统建立章节列表并优先生成第一节。
-3. 打开 **讲义**，左栏按书籍列出讲义文件夹；进入后点击章节，尚未生成的章节会按需生成。生成中的章节边生成边显示已返回的正文，完成后停在当前阅读位置；所用接口不支持流式返回时，改为生成完成后一次显示。生成中途关闭了应用的章节，下次打开时重新生成。还没有正文时，阅读器会说明正在等什么（准备 PDF、等待接口响应、模型思考中）；没能边生成边显示时，生成完成后提示原因（流式请求失败、接口没有流式返回，或者返回被中转服务缓冲）。
+3. 打开 **讲义**，左栏按书籍列出讲义文件夹；进入后点击章节，尚未生成的章节会按需生成。生成中的章节边生成边显示已返回的正文，完成后停在当前阅读位置；所用接口不支持流式返回时，改为生成完成后一次显示。生成中途关闭了应用的章节，下次打开时重新生成。还没有正文时，阅读器会说明正在等什么（准备 PDF、等待接口响应、模型思考中），模型返回思考内容时同时显示思考过程；没能边生成边显示时，生成完成后提示原因（流式请求失败、接口没有流式返回，或者返回被中转服务缓冲）。
 4. 讲义阅读器支持上一节/下一节、返回原书页、字号调整、进度记录、页面画笔和独立草稿。
 5. 选中讲义内容可直接问 AI；右上角可重新生成当前章节。长按章节卡片可下载 PDF。
 6. 右下角画笔按钮左侧的 **AI** 打开当前讲义的独立对话，界面、提示词和操作（引用、编辑、重新生成、导出）与阅读页的 AI 对话相同。每次提问都会把当前讲义正文作为附件发给 AI，不发送页面截图；对话历史按章节分别保存（最多 30 条），开启 R2 同步时随元数据同步到其他设备。论文摘要和课堂 AI 笔记在讲义阅读器中打开时同样可用，各自保存对话。该对话在 **设置 → AI 功能分配 → 讲义与摘要** 中对应“讲义 AI 对话”的三项。
@@ -250,6 +258,14 @@ Every AI request allows up to 32,800 output tokens. If a model's own output limi
 
 AI chats, Ask AI answers, book lectures, paper abstracts, and class AI notes are shown as they stream in. If the API does not support streaming, the same API is called again without streaming and the result appears when generation completes. Streams from relays that label them as JSON, send one JSON object per line, or use another provider's format are still read as streams.
 
+When the model returns its thinking, the stream shows it as well: before the answer starts, a “Thinking…” block is expanded; once the answer starts, it collapses into a “Thought process” line above the text that can be reopened. Only the answer is saved; the thinking is not. Supported formats:
+
+- `reasoning_content` (DeepSeek `deepseek-reasoner` and others) or `reasoning` (OpenRouter and others) in OpenAI-compatible streams; a leading `<think>…</think>` block in the text is also shown as thinking and kept out of the answer.
+- Gemini 2.5 and later: streaming requests ask for thought summaries (`includeThoughts`).
+- Claude models that think by default (Opus / Sonnet / Haiku 5 and later, Fable): streaming requests ask for summarized thinking (`display: summarized`). Claude uses its native API only for requests with a PDF (lecture generation, chats on a PDF page).
+
+Asking for thought summaries only controls whether the thinking is returned; it does not change how much the model thinks or what it costs. Models that do not think (such as `deepseek-chat`) show only the answer as before. If a relay or an older model rejects the thinking parameter, the app retries without it. The official OpenAI Chat Completions API does not return reasoning text, so no thinking is shown there.
+
 Use a strong text/LaTeX model for chat, outlines, lectures, and abstracts. Lasso questions, handwriting indexing, exercise extraction, and grading require vision input. Classroom transcription requires an API that accepts the audio sent by the app. PDF outline and lecture generation require a provider compatible with the app's PDF attachment calls.
 
 API credentials and AI feature assignments stay local and are excluded from R2 metadata sync. A full ZIP contains local settings, so protect the ZIP as a sensitive file.
@@ -295,7 +311,7 @@ Recordings use durable app-private storage and survive WebView recreation and in
 
 ### 6. Lectures and abstracts
 
-For a book, run **Library → AI → Generate Outline**, then **Generate Lecture**. Open **Lectures**, enter the book folder, and open a chapter; pending chapters are generated on demand. While a chapter is being generated, the text received so far is shown as it streams in, and the view stays at your reading position when generation finishes; if the API does not support streaming, the chapter appears once generation completes. A chapter whose generation was cut off by closing the app is generated again the next time you open it. Before any text arrives, the viewer says what it is waiting for (preparing the PDF, waiting for the API, the model thinking); if a lecture could not be shown as it was written, a notice after generation gives the reason (the streaming request failed, the API did not stream, or a relay buffered the response). The lecture viewer supports previous/next chapter, source-book jump, font size, progress, drawing, a separate scratchpad, selected-text questions, regeneration, and PDF download by long-pressing a chapter card.
+For a book, run **Library → AI → Generate Outline**, then **Generate Lecture**. Open **Lectures**, enter the book folder, and open a chapter; pending chapters are generated on demand. While a chapter is being generated, the text received so far is shown as it streams in, and the view stays at your reading position when generation finishes; if the API does not support streaming, the chapter appears once generation completes. A chapter whose generation was cut off by closing the app is generated again the next time you open it. Before any text arrives, the viewer says what it is waiting for (preparing the PDF, waiting for the API, the model thinking) and shows the model's thinking when the API returns it; if a lecture could not be shown as it was written, a notice after generation gives the reason (the streaming request failed, the API did not stream, or a relay buffered the response). The lecture viewer supports previous/next chapter, source-book jump, font size, progress, drawing, a separate scratchpad, selected-text questions, regeneration, and PDF download by long-pressing a chapter card.
 
 The **AI** button to the left of the pen button opens a separate chat for the current lecture, with the same interface, prompts, and actions (quote, edit, regenerate, export) as the Reader AI chat. Each question sends the current lecture text as the attachment instead of a page screenshot. Chat history is kept per chapter (up to 30 messages) and syncs with the R2 metadata when sync is enabled. Abstracts and class AI notes opened in the lecture viewer have their own chats in the same way. In **Settings → AI Feature Assignment → Lectures & abstracts**, the chat uses the three “Lecture AI chat” features.
 
