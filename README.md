@@ -39,12 +39,16 @@ This repository ships the current Math Reader web app as an Android APK. BOOX/E 
 
 进入 **设置 → API Setting**：
 
-1. 在 **Primary API** 选择 DeepSeek、OpenAI、Google、Claude 或 Custom。
+1. 在 **Primary API** 选择 DeepSeek、OpenAI、Gemini (AI Studio)、Vertex Agent、Claude 或 Custom。次要和备用 API 提供同样的渠道。
 2. 填写服务地址、API Key 和模型名；兼容的服务可以使用 **Fetch Models** 拉取模型列表。
 3. 可选配置 **Secondary API**（次要 API），供指定的功能单独使用，例如让识题、批改走视觉模型，其余功能走主要 API。
 4. 如需故障切换，可再配置 **Backup API**。所选 API 调用失败时应用会改用备用服务；所选的就是备用 API 时改用主要 API。
 5. **Supabase** 和 **Mathpix** 位于 Other Services，仅在你确实使用对应服务时填写。
 6. 保存后先用一个普通 AI 对话验证配置，再测试图片识别、录音或 PDF 任务。
+
+**Vertex Agent** 位于 Gemini 下方，默认地址为 `https://aiplatform.googleapis.com/v1/publishers/google`，模型名可填写 `gemini-3.7-flash`。选择该渠道后使用 Google Cloud API Key；模型列表接口需要 OAuth，因此模型名需手动填写。基础地址与完整 `generateContent` / `streamGenerateContent` 地址都可使用，应用会统一处理模型路径。
+
+Vertex 会直接发送完整 PDF 和压缩音频，不使用 AI Studio Files API，也不会为了文件大小而丢弃附件或只提取文字。标准 Gemini 3 及更新模型支持每个附件最高 256 MB；旧模型 PDF 保留 50 MiB 上限，旧音频模型采用 18 MiB 的保守直传范围。超过对应上限会提示缩小页码范围或压缩文件；模型的上下文限制仍然适用。AI Studio 超过 18 MiB 的附件继续通过 Files API 上传。[Google 附件限制说明](https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/inference)。
 
 **设置 → AI 功能分配** 默认收起为一行“全部 AI 功能”，显示功能总数和每套 API 被选用的项数（没有功能选用的 API 不列出）；点开后按课堂、书架、阅读、讲义与摘要、笔记、复习、习题、错题分组折叠列出全部 AI 功能，每个功能可单独选择主要、次要或备用 API，生成与重新生成、失败重试等操作各算一个功能；展开分组后也可用“本组全部使用”一次设置整组。默认全部使用主要 API；所选 API 未配置时自动改用主要 API。
 
@@ -113,7 +117,7 @@ API Key 和 AI 功能分配保存在本机设置中，不会随 R2 元数据同�
 
 录音写入应用私有的持久化存储，覆盖升级和 WebView 重建不会主动删除，但卸载应用仍会清除录音。创建完整 ZIP 前应先停止正在进行的录音；若导出提示录音缺失，请检查 ZIP 中的 `recordings/missing.json`。
 
-iPhone/iPad PWA 中超过 5 分钟或 10 MB 的 AAC/M4A 长录音需要配置 Gemini 模型。应用会通过 Gemini Files API 直接处理压缩录音，避免在 iOS 页面内把 80～90 分钟音频整体解码为 PCM；纪要生成结束后会删除 Gemini 中的临时文件。
+iPhone/iPad PWA 中超过 5 分钟或 10 MB 的 AAC/M4A 长录音需要配置 Gemini 模型。AI Studio 通过 Files API 处理压缩录音，纪要生成结束后删除临时文件；Vertex Agent 在模型大小上限内直接发送完整压缩录音。两者都避免在 iOS 页面内把 80～90 分钟音频整体解码为 PCM。
 
 ### 6. 讲义与论文摘要
 
@@ -245,12 +249,14 @@ The bottom navigation is **Class, Library, Reader, Lectures, Notes, Exercise, Se
 
 Open **Settings → API Setting**:
 
-1. Select DeepSeek, OpenAI, Google, Claude, or Custom as the primary provider.
+1. Select DeepSeek, OpenAI, Gemini (AI Studio), Vertex Agent, Claude, or Custom as the primary provider. Secondary and backup providers offer the same choices.
 2. Enter the endpoint, API key, and model. Use **Fetch Models** where the provider supports it.
 3. Optionally configure a secondary provider for the features you assign to it, for example a vision model for exercise extraction and grading.
 4. Optionally configure a backup provider, used when the selected API fails (the primary API is used when the backup itself was selected).
 5. Supabase and Mathpix are optional services; leave them empty unless your workflow needs them.
 6. Save the settings, test a text chat, and then test any image, audio, or PDF workflow you plan to use.
+
+**Vertex Agent**, immediately below Gemini, defaults to `https://aiplatform.googleapis.com/v1/publishers/google`. Use a Google Cloud API key and enter a model such as `gemini-3.7-flash` manually; listing models requires OAuth. Base URLs and complete generation URLs are both accepted. Vertex sends complete PDF and compressed audio attachments inline instead of using the AI Studio Files API. Standard Gemini 3+ models allow 256 MB per attachment; legacy models use a 50 MiB PDF limit and a conservative 18 MiB audio limit. Larger files produce an actionable error without dropping the attachment or reducing it to extracted text. Model context limits still apply. AI Studio continues to upload attachments above 18 MiB with its Files API. [Google attachment limits](https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/inference).
 
 **Settings → AI Feature Assignment** is collapsed into a single **All AI features** row showing the number of features and how many use each API (an API that no feature uses is not listed). Expand it to list every AI feature in collapsible groups (Class, Library, Reader, Lectures & abstracts, Notes, Review, Exercises, Wrong questions). Each feature, including generate, regenerate, and retry actions separately, can use the primary, secondary, or backup API, and **Use for the whole group** sets a whole group at once. Everything uses the primary API by default, and a feature assigned to an unconfigured API falls back to the primary API.
 
@@ -404,6 +410,8 @@ For unresolved problems, open an [Issue](https://github.com/none0enon/math-reade
 - 模式切换会调用 `__booxPen.syncRegions()` 立即重算原生书写区域。
 
 ### 构建
+
+Gemini / Vertex 附件回归测试：`node --test tests/gemini-attachments.test.cjs`（Node.js 22+）。测试覆盖 20 MiB PDF 和音频、流式返回、AI Studio 上传兼容、超限错误及独立请求并发。设置 `MATH_READER_GEMINI_API_KEY` 后还可运行测试文件中可选的真实 Vertex 大 PDF 测试；该测试仅发送本地生成的合成 PDF。
 
 GitHub Actions 在同仓库 PR 和 `main` 更新后自动构建。默认分支的 `Sign APK` workflow 下载构建产物、核对包名和版本，并使用长期 CI 密钥签名。可在 **Actions → Sign APK → Artifacts** 获取 `math-reader-boox-1.0.2-ci.*`。
 
