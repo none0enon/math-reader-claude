@@ -22080,6 +22080,7 @@ ${i18n('prompt_lecture_gen')}`;
         // 讲义 Markdown 转 HTML（外层 <p>），先保护 LaTeX 公式，避免被 Markdown 处理破坏
         function lectureMarkdownHtml(contentText) {
             let content = contentText;
+            const escapeLatexHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const latexBlocks = [];
             const latexInlines = [];
 
@@ -22089,11 +22090,52 @@ ${i18n('prompt_lecture_gen')}`;
                 return `%%LATEXBLOCK${latexBlocks.length - 1}%%`;
             });
 
+            // 与讲义的 KaTeX 配置一致，保护 \[...\] 和 \(...\)，避开 \\[2pt] 等换行命令
+            content = content.replace(/(^|[^\\])\\\[([\s\S]*?)\\\]/g, (match, before, p1) => {
+                latexBlocks.push(p1.trim());
+                return `${before}%%LATEXBLOCK${latexBlocks.length - 1}%%`;
+            });
+            content = content.replace(/(^|[^\\])\\\(([\s\S]*?)\\\)/g, (match, before, p1) => {
+                latexInlines.push(p1.trim());
+                return `${before}%%LATEXINLINE${latexInlines.length - 1}%%`;
+            });
+
             // 保护 $ ... $ 行内公式 (不跨行)
             content = content.replace(/\$([^\$\n]+?)\$/g, (match, p1) => {
                 latexInlines.push(p1.trim());
                 return `%%LATEXINLINE${latexInlines.length - 1}%%`;
             });
+
+            // 公式已被占位符保护，公式中的绝对值竖线不会被拆成表格列
+            const tableCells = (line) => {
+                const cells = [''];
+                for (let i = 0; i < line.length; i++) {
+                    if (line[i] === '\\' && i + 1 < line.length) {
+                        cells[cells.length - 1] += line[i + 1] === '|' ? '|' : line[i] + line[i + 1];
+                        i++;
+                    } else if (line[i] === '|') cells.push('');
+                    else cells[cells.length - 1] += line[i];
+                }
+                if (!cells[0].trim()) cells.shift();
+                if (cells.length && !cells[cells.length - 1].trim()) cells.pop();
+                return cells.map(cell => cell.trim());
+            };
+            const lines = content.split('\n');
+            for (let i = 0; i + 1 < lines.length; i++) {
+                if (!lines[i].includes('|')) continue;
+                const header = tableCells(lines[i]);
+                const separator = tableCells(lines[i + 1]);
+                if (!header.length || separator.length !== header.length || !separator.every(cell => /^:?-{3,}:?$/.test(cell))) continue;
+                const rowHtml = (cells, tag) => '<tr>' + header.map((_, col) => `<${tag}>${cells[col] || ''}</${tag}>`).join('') + '</tr>';
+                const rows = [];
+                let end = i + 2;
+                while (end < lines.length && lines[end].includes('|') && lines[end].trim()) {
+                    rows.push(rowHtml(tableCells(lines[end]), 'td'));
+                    end++;
+                }
+                lines.splice(i, end - i, `</p><table><thead>${rowHtml(header, 'th')}</thead><tbody>${rows.join('')}</tbody></table><p>`);
+            }
+            content = lines.join('\n');
 
             // 处理Markdown
             let html = content
@@ -22109,24 +22151,30 @@ ${i18n('prompt_lecture_gen')}`;
 
             // 恢复LaTeX公式
             html = html.replace(/%%LATEXBLOCK(\d+)%%/g, (match, idx) => {
-                const latex = latexBlocks[parseInt(idx)];
+                const latex = escapeLatexHtml(latexBlocks[parseInt(idx)]);
                 return `</p><div class="latex-display">$$${latex}$$</div><p>`;
             });
 
             html = html.replace(/%%LATEXINLINE(\d+)%%/g, (match, idx) => {
-                const latex = latexInlines[parseInt(idx)];
+                const latex = escapeLatexHtml(latexInlines[parseInt(idx)]);
                 return `$${latex}$`;
             });
 
             return '<p>' + html + '</p>';
         }
 
-        // 流式正文中已经完整、可以定稿的长度：截到最后一个空行为止，且该处不在 $$ 公式块内
+        // 流式正文只在公式外的空行处分段，避免把 \[...\] 等公式拆进不同 DOM 节点
         function lectureStreamStableLength(text) {
-            for (let cut = text.lastIndexOf('\n\n'); cut >= 0; cut = text.lastIndexOf('\n\n', cut - 1)) {
-                if ((text.slice(0, cut).match(/\$\$/g) || []).length % 2 === 0) return cut + 2;
+            const mathEnds = { '$$': '$$', '$': '$', '\\[': '\\]', '\\(': '\\)' };
+            let mathEnd = '', stableLength = 0;
+            for (const match of text.matchAll(/\\[\s\S]|\$\$|\$|\n\n/g)) {
+                const token = match[0];
+                if (token === '\n\n') {
+                    if (!mathEnd) stableLength = match.index + token.length;
+                } else if (token === mathEnd) mathEnd = '';
+                else if (!mathEnd) mathEnd = mathEnds[token] || '';
             }
-            return 0;
+            return stableLength;
         }
 
         // 生成中的讲义边收边显示：完整的段落渲染一次后保留，之后只追加新完成的段落、重画末尾未完成的一段，
