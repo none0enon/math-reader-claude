@@ -6197,7 +6197,8 @@
                 <select class="form-select" id="apiProvider" onchange="updateDefaultUrl('primary')">
                     <option value="deepseek">deepseek</option>
                     <option value="openai">openai</option>
-                    <option value="google">google</option>
+                    <option value="google">Gemini (AI Studio)</option>
+                    <option value="vertex">Vertex Agent</option>
                     <option value="claude">claude</option>
                     <option value="custom" data-i18n="custom">自定义</option>
                 </select>
@@ -6229,7 +6230,8 @@
                     <option value="" data-i18n="no_secondary">不使用次要</option>
                     <option value="deepseek">deepseek</option>
                     <option value="openai">openai</option>
-                    <option value="google">google</option>
+                    <option value="google">Gemini (AI Studio)</option>
+                    <option value="vertex">Vertex Agent</option>
                     <option value="claude">claude</option>
                     <option value="custom" data-i18n="custom">自定义</option>
                 </select>
@@ -6261,7 +6263,8 @@
                     <option value="" data-i18n="no_backup">不使用备用</option>
                     <option value="deepseek">deepseek</option>
                     <option value="openai">openai</option>
-                    <option value="google">google</option>
+                    <option value="google">Gemini (AI Studio)</option>
+                    <option value="vertex">Vertex Agent</option>
                     <option value="claude">claude</option>
                     <option value="custom" data-i18n="custom">自定义</option>
                 </select>
@@ -7488,18 +7491,27 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
         });
         Object.assign(I18N.zh, {
             files_api_processing_timeout:'Files API 处理超时',
+            vertex_model_list_requires_oauth:'Vertex Agent 的 API Key 不支持拉取模型列表，请直接填写模型名称。',
+            vertex_attachment_too_large:'附件超过此 Vertex 模型的单文件直传上限（{0} MB）。请缩小 PDF 页码范围或压缩文件后重试。',
+            vertex_files_api_unsupported:'Vertex Agent 不支持 AI Studio Files API，请使用附件直传。',
             rec_uploading_long_recording:'正在上传长录音到 Gemini…',
             rec_processing_long_recording:'Gemini 正在处理整段长录音…',
             prompt_long_recording_file:'这是完整的长录音。必须覆盖从开头到结尾的全部内容，并按约 5 分钟的时间范围组织详细纪要。覆盖全程比逐字逐句更重要；请保留关键论述、例子、公式、结论和待办事项，不得只处理录音开头。'
         });
         Object.assign(I18N.en, {
             files_api_processing_timeout:'Files API processing timed out',
+            vertex_model_list_requires_oauth:'Vertex Agent API keys cannot list models. Enter the model name directly.',
+            vertex_attachment_too_large:'The attachment exceeds this Vertex model’s inline file limit ({0} MB). Select fewer PDF pages or compress the file and retry.',
+            vertex_files_api_unsupported:'Vertex Agent does not support the AI Studio Files API. Send the attachment inline.',
             rec_uploading_long_recording:'Uploading the long recording to Gemini…',
             rec_processing_long_recording:'Gemini is processing the complete long recording…',
             prompt_long_recording_file:'This is the complete long recording. Cover it from beginning to end and organize detailed minutes in roughly five-minute time ranges. Full coverage matters more than a word-for-word transcript; preserve key arguments, examples, formulas, conclusions, and action items. Do not process only the beginning.'
         });
         Object.assign(I18N.fr, {
             files_api_processing_timeout:'Le traitement Files API a expiré',
+            vertex_model_list_requires_oauth:'Les clés API Vertex Agent ne permettent pas de lister les modèles. Saisissez directement le nom du modèle.',
+            vertex_attachment_too_large:'La pièce jointe dépasse la limite d’envoi direct de ce modèle Vertex ({0} MB). Sélectionnez moins de pages PDF ou compressez le fichier, puis réessayez.',
+            vertex_files_api_unsupported:'Vertex Agent ne prend pas en charge l’API Files d’AI Studio. Envoyez la pièce jointe directement.',
             rec_uploading_long_recording:'Téléversement du long enregistrement vers Gemini…',
             rec_processing_long_recording:'Gemini traite l’enregistrement long complet…',
             prompt_long_recording_file:'Ceci est l’enregistrement long complet. Couvre-le du début à la fin et organise un compte rendu détaillé par plages d’environ cinq minutes. La couverture complète est plus importante qu’une transcription mot à mot ; conserve les arguments, exemples, formules, conclusions et actions. Ne traite pas uniquement le début.'
@@ -13040,6 +13052,7 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             deepseek: 'https://api.deepseek.com/v1/chat/completions',
             openai: 'https://api.openai.com/v1/chat/completions',
             google: 'https://generativelanguage.googleapis.com/v1beta',
+            vertex: 'https://aiplatform.googleapis.com/v1/publishers/google',
             claude: 'https://api.anthropic.com/v1/messages'
         };
         
@@ -13063,17 +13076,53 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             }
         }
 
-        // 判断一个 URL 是否为 Google Gemini 端点（用 host 判断，不依赖下拉框）
-        function isGeminiUrl(url) {
-            return typeof url === 'string' && url.indexOf('generativelanguage.googleapis.com') !== -1;
+        function isVertexGeminiUrl(url) {
+            try {
+                const host = new URL(url).hostname;
+                return host === 'aiplatform.googleapis.com' || /^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(host);
+            } catch (_) { return false; }
         }
 
-        // 长录音只能走 Gemini Files API：先看该功能所选的 API，再依次找主要、备用、次要 API
+        function isVertexGeminiConfig(config) {
+            return config.provider === 'vertex' || isVertexGeminiUrl(config.url);
+        }
+
+        // 兼容已保存的 google / 自定义渠道，也识别 Vertex 的全球及区域端点。
+        function isGeminiUrl(url) {
+            if (isVertexGeminiUrl(url)) return true;
+            try { return new URL(url).hostname === 'generativelanguage.googleapis.com'; }
+            catch (_) { return false; }
+        }
+
+        function geminiBaseUrl(url) {
+            return String(url || '').trim().replace(/[?#].*$/, '').replace(/\/+$/, '')
+                .replace(/\/models(?:\/[^/]+)?$/, '');
+        }
+
+        // AI Studio 的大附件走 Files API；Vertex 没有这个上传端点，必须保留完整附件直传。
+        // https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/inference
+        function geminiUsesFilesApi(config, byteLength, mimeType) {
+            if (!isVertexGeminiConfig(config)) return byteLength > 18 * 1024 * 1024;
+            const model = String(config.model || '').replace(/^models\//, '');
+            const modern = /^gemini-(?:[3-9]|\d{2,})(?:[.-]|$)/i.test(model) &&
+                !/^gemini-3\.1-pro-preview-customtools/i.test(model);
+            // 标准 Gemini 3+ 每个 inline part 上限 256 MB；旧端点 PDF 上限 50 MiB。
+            // 旧音频端点保留 18 MiB 的保守直传范围，不误用 AI Studio 的上传接口。
+            const limit = modern ? 256000000 : mimeType === 'application/pdf' ? 50 * 1024 * 1024 : 18 * 1024 * 1024;
+            if (byteLength > limit) {
+                const error = new Error(i18n('vertex_attachment_too_large', Math.round(limit / 100000) / 10));
+                error.code = 'GEMINI_ATTACHMENT_TOO_LARGE';
+                throw error;
+            }
+            return false;
+        }
+
+        // 长录音使用 Gemini 原生附件：AI Studio 上传临时文件，Vertex 直传压缩音频。
         function _configuredGeminiRecordingConfig(feature) {
             const settings = appData.settings || {};
             return aiApiSlotOrder(feature).map(getAIApiConfig).find(config =>
                 isAIApiConfigured(config) && settings[AI_API_SETTING_FIELDS[config.slot].model] &&
-                (isGeminiUrl(config.url) || config.provider === 'custom')) || null;
+                (isGeminiUrl(config.url) || ['google', 'vertex', 'custom'].includes(config.provider))) || null;
         }
 
         async function fetchModels(type) {
@@ -13084,6 +13133,11 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             
             const rawUrl = urlEl.value.trim();
             const key = keyEl.value;
+
+            if (isVertexGeminiConfig({ url: rawUrl, provider: document.getElementById(fields.provider).value })) {
+                showToast(i18n('vertex_model_list_requires_oauth'));
+                return;
+            }
             
             if (!key) {
                 showToast(i18n('toast_enter_api_key'));
@@ -13096,8 +13150,7 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                 if (isGeminiUrl(rawUrl)) {
                     // Gemini: GET {base}/models?key=xxx，无 Authorization 头
                     // 兼容用户填的 url 可能是 .../v1beta、.../v1beta/、.../v1beta/models 等形式
-                    let base = rawUrl.replace(/\/+$/, '');
-                    if (!/\/models$/.test(base)) base = base + '/models';
+                    const base = geminiBaseUrl(rawUrl) + '/models';
                     const url = base + '?key=' + encodeURIComponent(key);
                     response = await fetch(url, { method: 'GET' });
                     if (!response.ok) {
@@ -20429,6 +20482,7 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     return await doAIRequestPreferStream(fallbackConfig, systemPrompt, messages, options);
                 } catch (e2) {
                     console.error(`${fallbackConfig.slot} API 也失败:`, e2);
+                    if (e.code === 'GEMINI_ATTACHMENT_TOO_LARGE') throw e;
                     throw new Error(i18n('all_apis_failed'));
                 }
             }
@@ -20454,7 +20508,7 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                     }
                 });
             } catch (e) {
-                if (received) throw e;
+                if (received || e.code === 'GEMINI_ATTACHMENT_TOO_LARGE') throw e;
                 console.warn(`${config.slot} API 流式请求失败，改用普通请求:`, e);
                 onStreamState?.('fallback', e?.message || String(e));
                 return await doAIRequest(config, systemPrompt, messages,
@@ -20789,7 +20843,7 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
 
         async function doAIRequest(config, systemPrompt, messages, options = {}) {
             // Gemini 原生渠道，或用户指定的"自定义"渠道都走 Gemini 协议（按用户要求）
-            const useGemini = isGeminiUrl(config.url) || config.provider === 'custom';
+            const useGemini = isGeminiUrl(config.url) || ['google', 'vertex', 'custom'].includes(config.provider);
             if (useGemini) {
                 return await doGeminiRequest(config, systemPrompt, messages, options);
             }
@@ -20983,10 +21037,10 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
         // - 鉴权走 URL 的 key 参数
         // - messages/system 映射到 contents / systemInstruction
         // - 温度等参数从 options 取（与自定义渠道一致）；maxOutputTokens 默认 AI_MAX_OUTPUT_TOKENS
-        // - 支持 PDF 附件：≤ 18MB 用 inline_data；更大走 Files API
+        // - AI Studio 超过 18 MiB 走 Files API；Vertex 按模型上限直传完整 PDF / 音频
         async function doGeminiRequest(config, systemPrompt, messages, options = {}) {
-            // 归一化 base：去掉末尾可能的 /models 或斜杠
-            let base = (config.url || '').replace(/\/+$/, '').replace(/\/models$/, '');
+            // 同时接受基础地址、/models 和完整 generateContent 地址。
+            const base = geminiBaseUrl(config.url);
             if (!base) throw new Error(i18n('api_url_empty'));
             const modelName = (config.model || '').replace(/^models\//, '');
             if (!modelName) throw new Error(i18n('select_model_required'));
@@ -20994,10 +21048,9 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             // 若有 PDF 附件，把它嵌入到最后一条 user 消息的 parts
             let contents;
             if (options.pdfAttachment) {
-                contents = await buildGeminiContentsWithPdf(base, config.key, messages, options.pdfAttachment);
+                contents = await buildGeminiContentsWithPdf(config, messages, options.pdfAttachment);
             } else {
                 contents = [];
-                const inlineAudioThreshold = 18 * 1024 * 1024; // 18 MB
                 for (const m of messages) {
                     const role = m.role === 'assistant' ? 'model' : 'user';
                     // 处理多模态内容(content为数组时，包含image_url、audio和text)
@@ -21026,8 +21079,9 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
                                 }
                                 const audioBlob = item.audio.blob || null;
                                 let b64 = item.audio.data || null;
-                                const approxBytes = audioBlob ? audioBlob.size : Math.floor(b64.length * 3 / 4);
-                                if (approxBytes > inlineAudioThreshold) {
+                                const byteLength = audioBlob ? audioBlob.size : Math.floor(b64.length * 3 / 4) -
+                                    (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0);
+                                if (geminiUsesFilesApi(config, byteLength, mime)) {
                                     try {
                                         const payload = audioBlob || base64ToUint8(b64);
                                         const fileRef = await geminiUploadFile(base, config.key, payload, mime, 'recording');
@@ -21095,16 +21149,16 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
             return textOf(await response.json());
         }
 
-        // 构造 Gemini contents，带 PDF。超过 18MB 走 Files API。
-        async function buildGeminiContentsWithPdf(base, key, messages, pdfAttachment) {
+        // 按所选服务构造 PDF 附件，不把 Vertex 大文件发往 AI Studio Files API。
+        async function buildGeminiContentsWithPdf(config, messages, pdfAttachment) {
             const bytes = pdfAttachment.bytes;
-            const inlineThreshold = 18 * 1024 * 1024; // 18 MB
             let fileRef = null; // { file_uri, mime_type } for Files API
             let inlineBase64 = null;
-            if (bytes.length <= inlineThreshold) {
+            if (!geminiUsesFilesApi(config, bytes.byteLength, 'application/pdf')) {
                 inlineBase64 = pdfAttachment.base64 || uint8ToBase64(bytes);
             } else {
-                fileRef = await geminiUploadFile(base, key, bytes, 'application/pdf', pdfAttachment.name || 'book.pdf');
+                fileRef = await geminiUploadFile(geminiBaseUrl(config.url), config.key, bytes,
+                    'application/pdf', pdfAttachment.name || 'book.pdf');
             }
 
             const contents = messages.map(m => ({
@@ -21130,9 +21184,12 @@ generation_failed:'Échec de la génération', network_api_retry:'Vérifiez le r
 
         // 走 Gemini Files API：先发 start 拿到 upload URL，再上传字节，最后得到 file_uri
         async function geminiUploadFile(base, key, bytes, mimeType, displayName, options = {}) {
+            // 防止任何调用点把 AI Studio 的上传路径拼到 Vertex 地址上。
+            if (isVertexGeminiUrl(base)) throw new Error(i18n('vertex_files_api_unsupported'));
+            base = geminiBaseUrl(base);
             // base 形如 https://generativelanguage.googleapis.com/v1beta
             const normalizedMime = window.RecordingAI?.normalizeGeminiAudioMime(mimeType) || mimeType;
-            const origin = base.replace(/\/v1beta.*$/, '');
+            const origin = base.replace(/\/v1(?:beta\d*)?$/, '');
             const startUrl = origin + '/upload/v1beta/files?key=' + encodeURIComponent(key);
             const startResp = await fetch(startUrl, {
                 method: 'POST',
@@ -26576,9 +26633,24 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
         async function _prepareGeminiFileRecordingAi(blob, durationSeconds, feature) {
             const config = _configuredGeminiRecordingConfig(feature);
             if (!config) throw new Error(i18n('large_recording_requires_gemini'));
-            const base = config.url.replace(/\/+$/, '').replace(/\/models$/, '');
+            const base = geminiBaseUrl(config.url);
             const mimeType = window.RecordingAI.normalizeGeminiAudioMime(
                 blob.type || 'audio/mp4');
+            if (isVertexGeminiConfig(config)) {
+                geminiUsesFilesApi(config, blob.size, mimeType); // 在转换 Base64 前检查上限。
+                return {
+                    mode: 'gemini-inline',
+                    segments: [{
+                        index: 0,
+                        durationMs: Math.max(0, Math.round(Number(durationSeconds || 0) * 1000)),
+                        mimeType,
+                        byteLength: blob.size,
+                        geminiConfig: config,
+                        load: async () => blob
+                    }],
+                    cleanup: async () => {}
+                };
+            }
             showToast(i18n('rec_uploading_long_recording'));
             const file = await geminiUploadFile(base, config.key, blob, mimeType,
                 'long-recording', { processingTimeoutMs: 10 * 60 * 1000 });
@@ -26952,7 +27024,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                     ? segmentTexts.slice(0, context.index + 1).map((part, i) =>
                         '## 录音分段 ' + (i + 1) + '/' + context.total + '\n\n' + part).join('\n\n---\n\n')
                     : text;
-                if (context.total > 1 || prepared?.mode === 'gemini-file') {
+                if (context.total > 1 || prepared?.mode?.startsWith('gemini-')) {
                     preview = '# ' + material.ref + ' ' + i18n('rec_note_badge') + '\n\n' + preview;
                 }
                 updateClassroomNoteStream(materialId, stream, preview, thinking);
@@ -26972,7 +27044,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                         }
                     },
                     transcribe: async (segment, context) => {
-                        if (segment.geminiFile) {
+                        if (segment.geminiConfig) {
                             showToast(i18n('rec_processing_long_recording'));
                             const longSystem = systemPrompt + '\n\n' +
                                 i18n('prompt_long_recording_file');
@@ -26980,9 +27052,12 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                             return doAIRequestPreferStream(segment.geminiConfig, longSystem, [{
                                 role: 'user',
                                 content: [
-                                    { type: 'audio', audio: {
+                                    { type: 'audio', audio: segment.geminiFile ? {
                                         fileUri: segment.geminiFile.file_uri,
                                         mimeType: segment.geminiFile.mime_type
+                                    } : {
+                                        blob: await segment.load(),
+                                        mimeType: segment.mimeType
                                     } },
                                     { type: 'text', text: userMsg }
                                 ]
@@ -27017,7 +27092,7 @@ ${paper.abstract ? i18n('prompt_abstract_original') + paper.abstract : ''}`;
                     }
                 });
                 let content = job.content;
-                if (job.segmentCount > 1 || prepared.mode === 'gemini-file') {
+                if (job.segmentCount > 1 || prepared.mode?.startsWith('gemini-')) {
                     content = '# ' + material.ref + ' ' + i18n('rec_note_badge') + '\n\n' + content;
                 }
                 note = await _commitGeneratedClassroomNote({
